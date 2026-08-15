@@ -11,15 +11,8 @@ const PORT = process.env.PORT || 3000;
 // Initialize Gemini
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-// Middleware
-app.use(cors({
-  origin: [
-    'http://localhost:3000',
-    'http://localhost:5000',
-    process.env.FRONTEND_URL || 'http://localhost'
-  ],
-  credentials: true
-}));
+// Middleware - Allow all origins so your GitHub frontend can connect
+app.use(cors());
 
 app.use(express.json());
 
