@@ -1,0 +1,3484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>B.R.E.A.T.H.E. | Hypoxia Monitoring System</title>
+
+  <!-- =========================================================
+       EXTERNAL LIBRARIES
+       ========================================================= -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+
+  <style>
+
+    /* =========================================================
+       GLOBAL VARIABLES
+       ========================================================= */
+
+    :root {
+      --bg-main: #f5faff;
+      --bg-panel: #ffffff;
+      --bg-soft: #eef6ff;
+
+      --text-main: #102a43;
+      --text-sub: #4c6b8a;
+
+      --border-color: #cfe4ff;
+
+      --accent: #2563eb;
+      --accent-2: #38bdf8;
+
+      --success: #22c55e;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+
+      --shadow: 0 12px 30px rgba(37, 99, 235, 0.12);
+    }
+
+
+    /* =========================================================
+       RESET
+       ========================================================= */
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+
+      background:
+        linear-gradient(
+          135deg,
+          #f8fbff 0%,
+          #eef6ff 100%
+        );
+
+      color: var(--text-main);
+
+      padding: 24px;
+    }
+
+
+    /* =========================================================
+       LANDING PAGE
+       ========================================================= */
+
+    #landingPage {
+
+      position: fixed;
+
+      top: 0;
+      left: 0;
+
+      width: 100%;
+      height: 100%;
+
+      background:
+        linear-gradient(
+          135deg,
+          #0f172a,
+          #172554,
+          #0c4a6e
+        );
+
+      color: white;
+
+      z-index: 9999;
+
+      display: flex;
+
+      justify-content: center;
+      align-items: center;
+
+      text-align: center;
+
+      padding: 40px;
+
+      overflow-y: auto;
+    }
+
+
+    .landing-content {
+
+      max-width: 950px;
+
+      width: 100%;
+    }
+
+
+    .landing-logo {
+
+      font-size: clamp(3rem, 8vw, 6rem);
+
+      font-weight: 800;
+
+      letter-spacing: 5px;
+
+      color: #38bdf8;
+
+      margin-bottom: 10px;
+    }
+
+
+    .landing-subtitle {
+
+      font-size: 1.2rem;
+
+      color: #cbd5e1;
+
+      margin-bottom: 15px;
+
+      letter-spacing: 1px;
+    }
+
+
+    .landing-description {
+
+      max-width: 750px;
+
+      margin: auto;
+
+      line-height: 1.7;
+
+      color: #cbd5e1;
+
+      font-size: 1rem;
+    }
+
+
+    .goals-grid {
+
+      display: grid;
+
+      grid-template-columns:
+        repeat(2, 1fr);
+
+      gap: 18px;
+
+      margin: 30px 0;
+
+      text-align: left;
+    }
+
+
+    .goal-card {
+
+      background:
+        rgba(255,255,255,0.08);
+
+      padding: 20px;
+
+      border-radius: 15px;
+
+      border:
+        1px solid
+        rgba(255,255,255,0.12);
+
+      backdrop-filter: blur(8px);
+
+      transition: 0.2s;
+    }
+
+
+    .goal-card:hover {
+
+      transform: translateY(-3px);
+
+      background:
+        rgba(255,255,255,0.12);
+    }
+
+
+    .goal-card h3 {
+
+      color: #38bdf8;
+
+      margin-bottom: 8px;
+    }
+
+
+    .goal-card p {
+
+      color: #cbd5e1;
+
+      line-height: 1.5;
+
+      font-size: 14px;
+    }
+
+
+    .btn-enter {
+
+      background:
+        linear-gradient(
+          135deg,
+          #2563eb,
+          #38bdf8
+        );
+
+      color: white;
+
+      padding: 15px 40px;
+
+      border: none;
+
+      border-radius: 30px;
+
+      font-weight: bold;
+
+      cursor: pointer;
+
+      font-size: 1.1rem;
+
+      transition: 0.3s;
+
+      box-shadow:
+        0 10px 30px
+        rgba(37,99,235,0.35);
+    }
+
+
+    .btn-enter:hover {
+
+      transform: translateY(-2px) scale(1.03);
+
+      box-shadow:
+        0 15px 35px
+        rgba(56,189,248,0.35);
+    }
+
+
+    /* =========================================================
+       HEADER
+       ========================================================= */
+
+    header {
+
+      display: flex;
+
+      justify-content: space-between;
+
+      align-items: center;
+
+      flex-wrap: wrap;
+
+      gap: 12px;
+
+      margin-bottom: 24px;
+
+      padding-bottom: 16px;
+
+      border-bottom:
+        1px solid
+        var(--border-color);
+    }
+
+
+    header h1 {
+
+      font-size: 28px;
+    }
+
+
+    .status-container {
+
+      display: flex;
+
+      align-items: center;
+
+      gap: 10px;
+
+      flex-wrap: wrap;
+    }
+
+
+    .status-badge {
+
+      background: var(--bg-soft);
+
+      border:
+        1px solid
+        #bfdbfe;
+
+      padding: 8px 14px;
+
+      border-radius: 999px;
+
+      font-size: 13px;
+
+      color: var(--accent);
+    }
+
+
+    .live-badge {
+
+      background: #dcfce7;
+
+      color: #166534;
+
+      border-color: #bbf7d0;
+
+      font-weight: 700;
+
+      text-transform: uppercase;
+    }
+
+
+    .btn-export {
+
+      background:
+        linear-gradient(
+          135deg,
+          var(--accent),
+          var(--accent-2)
+        );
+
+      color: white;
+
+      border: none;
+
+      padding: 10px 18px;
+
+      border-radius: 999px;
+
+      cursor: pointer;
+
+      font-size: 14px;
+
+      font-weight: 600;
+    }
+
+
+    .btn-export:hover {
+
+      opacity: 0.9;
+    }
+
+
+    /* =========================================================
+       STATUS / CONTROL AREA
+       ========================================================= */
+
+    .control-panel {
+
+      display: flex;
+
+      justify-content: space-between;
+
+      align-items: center;
+
+      flex-wrap: wrap;
+
+      gap: 12px;
+
+      margin-bottom: 24px;
+    }
+
+
+    .control-group {
+
+      display: flex;
+
+      flex-wrap: wrap;
+
+      gap: 10px;
+    }
+
+
+    .status-pill {
+
+      display: inline-flex;
+
+      align-items: center;
+
+      background: var(--bg-soft);
+
+      border:
+        1px solid
+        var(--border-color);
+
+      padding: 10px 14px;
+
+      border-radius: 999px;
+
+      font-size: 13px;
+
+      color: var(--text-sub);
+    }
+
+
+    /* =========================================================
+       ALERT
+       ========================================================= */
+
+    .alert-banner {
+
+      display: flex;
+
+      align-items: center;
+
+      justify-content: space-between;
+
+      flex-wrap: wrap;
+
+      gap: 12px;
+
+      padding: 16px 20px;
+
+      border-radius: 18px;
+
+      margin-bottom: 24px;
+
+      background:
+        rgba(220,38,38,0.10);
+
+      border:
+        1px solid
+        rgba(220,38,38,0.30);
+
+      color: #b91c1c;
+    }
+
+
+    .hidden {
+
+      display: none !important;
+    }
+
+
+    /* =========================================================
+       SENSOR CARDS
+       ========================================================= */
+
+    .cards-grid {
+
+      display: grid;
+
+      grid-template-columns:
+        repeat(
+          auto-fit,
+          minmax(220px,1fr)
+        );
+
+      gap: 16px;
+
+      margin-bottom: 24px;
+    }
+
+
+    .card {
+
+      background: var(--bg-panel);
+
+      border:
+        1px solid
+        var(--border-color);
+
+      padding: 22px;
+
+      border-radius: 18px;
+
+      min-height: 125px;
+
+      transition:
+        transform 0.18s ease,
+        box-shadow 0.18s ease;
+
+      cursor: pointer;
+
+      box-shadow: var(--shadow);
+    }
+
+
+    .card:hover {
+
+      transform:
+        translateY(-4px);
+
+      box-shadow:
+        0 18px 35px
+        rgba(37,99,235,0.18);
+    }
+
+
+    .card-title {
+
+      font-size: 12px;
+
+      color: var(--text-sub);
+
+      text-transform: uppercase;
+
+      letter-spacing: 0.5px;
+
+      margin-bottom: 8px;
+
+      display: flex;
+
+      justify-content: space-between;
+
+      align-items: center;
+    }
+
+
+    .card-value {
+
+      font-size: 32px;
+
+      font-weight: 700;
+
+      line-height: 1.1;
+    }
+
+
+    .unit {
+
+      font-size: 14px;
+
+      color: var(--text-sub);
+
+      margin-left: 5px;
+    }
+
+
+    /* =========================================================
+       AI / SMART INTERPRETATION
+       ========================================================= */
+
+    .ai-panel {
+
+      background:
+        linear-gradient(
+          135deg,
+          #172554,
+          #1e3a8a
+        );
+
+      color: #f8fafc;
+
+      padding: 24px;
+
+      border-radius: 18px;
+
+      margin-bottom: 24px;
+
+      border-left:
+        6px solid
+        #10b981;
+
+      box-shadow:
+        0 15px 35px
+        rgba(30,64,175,0.18);
+    }
+
+
+    .ai-header {
+
+      display: flex;
+
+      align-items: center;
+
+      gap: 10px;
+
+      margin-bottom: 12px;
+
+      color: #34d399;
+
+      font-weight: bold;
+
+      text-transform: uppercase;
+
+      font-size: 0.9rem;
+
+      letter-spacing: 0.05em;
+    }
+
+
+    .ai-content {
+
+      line-height: 1.7;
+
+      font-size: 1rem;
+
+      color: #e0f2fe;
+    }
+
+
+    .weather-tag {
+
+      display: inline-block;
+
+      background:
+        rgba(56,189,248,0.15);
+
+      color: #7dd3fc;
+
+      padding: 7px 12px;
+
+      border-radius: 8px;
+
+      font-size: 0.85rem;
+
+      margin-top: 14px;
+    }
+
+
+    /* =========================================================
+       PARAMETER INFORMATION PANEL
+       ========================================================= */
+
+    .parameter-panel {
+
+      background: white;
+
+      border:
+        2px solid
+        var(--accent);
+
+      padding: 25px;
+
+      border-radius: 18px;
+
+      margin-bottom: 24px;
+
+      box-shadow:
+        0 20px 40px
+        rgba(37,99,235,0.12);
+    }
+
+
+    .parameter-panel h2 {
+
+      margin-bottom: 15px;
+    }
+
+
+    .definition-box {
+
+      margin: 15px 0;
+
+      padding: 16px;
+
+      background: #f0f7ff;
+
+      border-radius: 10px;
+
+      color: #1e40af;
+
+      line-height: 1.6;
+    }
+
+
+    .parameter-impact {
+
+      line-height: 1.6;
+
+      margin-bottom: 15px;
+    }
+
+
+    .parameter-stats {
+
+      display: flex;
+
+      gap: 30px;
+
+      flex-wrap: wrap;
+
+      margin-top: 15px;
+    }
+
+
+    .stat-box {
+
+      background: #f8fbff;
+
+      border:
+        1px solid
+        var(--border-color);
+
+      padding: 14px 20px;
+
+      border-radius: 12px;
+    }
+
+
+    .close-button {
+
+      margin-top: 18px;
+
+      padding: 9px 20px;
+
+      border: none;
+
+      background: var(--accent);
+
+      color: white;
+
+      border-radius: 8px;
+
+      cursor: pointer;
+    }
+
+
+    /* =========================================================
+       CHART GRID
+       ========================================================= */
+
+    .dashboard-grid {
+
+      display: grid;
+
+      grid-template-columns:
+        repeat(2,minmax(0,1fr));
+
+      gap: 20px;
+
+      margin-bottom: 20px;
+    }
+
+
+    .panel {
+
+      background: white;
+
+      border:
+        1px solid
+        var(--border-color);
+
+      padding: 20px;
+
+      border-radius: 18px;
+
+      box-shadow: var(--shadow);
+    }
+
+
+    .panel-header {
+
+      display: flex;
+
+      justify-content: space-between;
+
+      align-items: center;
+
+      margin-bottom: 15px;
+
+      font-size: 16px;
+
+      font-weight: 700;
+    }
+
+
+    .chart-box {
+
+      height: 250px;
+
+      position: relative;
+    }
+
+
+    .minor-chart .chart-box {
+
+      height: 210px;
+    }
+
+
+    /* =========================================================
+       WARNING
+       ========================================================= */
+
+    .warning {
+
+      animation:
+        blink-red 1s infinite;
+
+      border-color:
+        #dc2626 !important;
+
+      box-shadow:
+        0 0 18px
+        rgba(220,38,38,0.55);
+    }
+
+
+    @keyframes blink-red {
+
+      0%,50%,100% {
+
+        background-color:
+          rgba(248,113,113,0.12);
+      }
+
+      25%,75% {
+
+        background-color:
+          transparent;
+      }
+    }
+
+
+    /* =========================================================
+       RESPONSIVE
+       ========================================================= */
+
+    @media (max-width: 900px) {
+
+      .dashboard-grid {
+
+        grid-template-columns: 1fr;
+      }
+    }
+
+
+    @media (max-width: 700px) {
+
+      body {
+
+        padding: 15px;
+      }
+
+      .goals-grid {
+
+        grid-template-columns: 1fr;
+      }
+
+      header {
+
+        align-items: flex-start;
+      }
+    }
+
+  </style>
+</head>
+
+
+<body>
+
+
+<!-- =========================================================
+     LANDING PAGE
+     ========================================================= -->
+
+<div id="landingPage">
+
+  <div class="landing-content">
+
+    <div class="landing-logo">
+      B.R.E.A.T.H.E.
+    </div>
+
+    <div class="landing-subtitle">
+      Biological Risk Evaluation and Aquatic Trends for Hypoxia Events
+    </div>
+
+    <p class="landing-description">
+
+      B.R.E.A.T.H.E. is a water-quality monitoring system designed
+      to continuously observe important aquatic parameters and help
+      identify environmental conditions associated with hypoxia and
+      potential fish-kill events.
+
+    </p>
+
+
+    <div class="goals-grid">
+
+      <div class="goal-card">
+
+        <h3>Early Warning</h3>
+
+        <p>
+          Continuously monitor dissolved oxygen and other water-quality
+          parameters to help identify potentially dangerous conditions
+          before they become severe.
+        </p>
+
+      </div>
+
+
+      <div class="goal-card">
+
+        <h3>Water Quality Monitoring</h3>
+
+        <p>
+          Track dissolved oxygen, temperature, pH, and turbidity
+          through a centralized monitoring dashboard.
+        </p>
+
+      </div>
+
+
+      <div class="goal-card">
+
+        <h3>Environmental Analysis</h3>
+
+        <p>
+          Examine relationships between water-quality parameters
+          through trends and correlation analysis.
+        </p>
+
+      </div>
+
+
+      <div class="goal-card">
+
+        <h3>Data Privacy</h3>
+
+        <p>
+          Data collected by the system is intended primarily for
+          academic research, device testing, and environmental
+          monitoring purposes.
+        </p>
+
+      </div>
+
+    </div>
+
+
+    <button
+      class="btn-enter"
+      onclick="enterDashboard()">
+
+      Enter Monitoring Station
+
+    </button>
+
+  </div>
+
+</div>
+
+
+
+<!-- =========================================================
+     MAIN HEADER
+     ========================================================= -->
+
+<header>
+
+  <div>
+
+    <h1>
+      B.R.E.A.T.H.E. Station 01
+    </h1>
+
+    <p
+      style="
+        color:var(--text-sub);
+        margin-top:6px;
+        font-size:15px;
+      ">
+
+      Water Quality & Hypoxia Monitoring System
+
+    </p>
+
+  </div>
+
+
+  <div class="status-container">
+
+    <button
+      class="btn-export"
+      onclick="exportDataToCSV()">
+
+      Download History
+
+    </button>
+
+
+    <div
+      class="status-badge"
+      id="syncStatus">
+
+      Connecting...
+
+    </div>
+
+
+    <div class="status-badge live-badge">
+
+      Live Data
+
+    </div>
+
+    <div class="status-badge">
+
+      Sampling: 20 min
+
+    </div>
+
+  </div>
+
+</header>
+
+
+
+<!-- =========================================================
+     ALERT
+     ========================================================= -->
+
+<div
+  id="alertBanner"
+  class="alert-banner hidden">
+
+  <strong>
+    ⚠ Hypoxia Warning
+  </strong>
+
+  <span id="alertText">
+    Dissolved Oxygen dropped below safe levels.
+  </span>
+
+  <button
+    class="close-button"
+    onclick="hideAlert()">
+
+    Dismiss
+
+  </button>
+
+</div>
+
+
+
+<!-- =========================================================
+     STATUS
+     ========================================================= -->
+
+<div class="control-panel">
+
+  <div class="control-group">
+
+    <span
+      class="status-pill"
+      id="lastUpdatedLabel">
+
+      Last update:
+      Waiting for cloud data...
+
+    </span>
+
+
+    <span
+      class="status-pill"
+      id="pointCountLabel">
+
+      History: 0 points
+
+    </span>
+
+  </div>
+
+</div>
+
+
+
+<!-- =========================================================
+     SMART ENVIRONMENTAL INTERPRETATION
+     ========================================================= -->
+
+<div class="ai-panel">
+
+  <div class="ai-header">
+
+    ✨ Smart Environmental Interpretation
+
+  </div>
+
+
+  <div
+    class="ai-content"
+    id="aiInsight">
+
+    Waiting for sensor data...
+
+  </div>
+
+
+  <div
+    id="weatherDisplay"
+    class="weather-tag">
+
+    Weather information unavailable
+
+  </div>
+
+</div>
+
+
+
+<!-- =========================================================
+     SENSOR CARDS
+     ========================================================= -->
+
+<div class="cards-grid">
+
+
+  <div
+    class="card"
+    style="border-left:5px solid #f97316;"
+    onclick="showParameter('turbidity')">
+
+    <div class="card-title">
+
+      Turbidity
+
+      <span>ℹ️</span>
+
+    </div>
+
+    <div
+      class="card-value"
+      id="val-turbidity">
+
+      --
+      <span class="unit">
+        NTU
+      </span>
+
+    </div>
+
+  </div>
+
+
+
+  <div
+    class="card"
+    style="border-left:5px solid #22c55e;"
+    onclick="showParameter('ph')">
+
+    <div class="card-title">
+
+      pH Level
+
+      <span>ℹ️</span>
+
+    </div>
+
+    <div
+      class="card-value"
+      id="val-ph">
+
+      --
+      <span class="unit">
+        pH
+      </span>
+
+    </div>
+
+  </div>
+
+
+
+  <div
+    class="card"
+    id="card-do"
+    style="border-left:5px solid #38bdf8;"
+    onclick="showParameter('dissolvedOxygen')">
+
+    <div class="card-title">
+
+      Dissolved Oxygen
+
+      <span>ℹ️</span>
+
+    </div>
+
+    <div
+      class="card-value"
+      id="val-do">
+
+      --
+      <span class="unit">
+        mg/L
+      </span>
+
+    </div>
+
+  </div>
+
+
+
+  <div
+    class="card"
+    style="border-left:5px solid #ef4444;"
+    onclick="showParameter('temperature')">
+
+    <div class="card-title">
+
+      Water Temperature
+
+      <span>ℹ️</span>
+
+    </div>
+
+    <div
+      class="card-value"
+      id="val-temp">
+
+      --
+      <span class="unit">
+        °C
+      </span>
+
+    </div>
+
+  </div>
+
+</div>
+
+
+
+<!-- =========================================================
+     PARAMETER INFORMATION
+     ========================================================= -->
+
+<div
+  id="paramDetailPanel"
+  class="parameter-panel hidden">
+
+  <h2 id="det-title">
+    Parameter
+  </h2>
+
+
+  <div class="definition-box">
+
+    <strong>
+      Definition:
+    </strong>
+
+    <span id="det-def">
+      --
+    </span>
+
+  </div>
+
+
+  <div class="parameter-impact">
+
+    <strong>
+      Relationship to Hypoxia:
+    </strong>
+
+    <span id="det-impact">
+      --
+    </span>
+
+  </div>
+
+
+  <div class="parameter-impact">
+
+    <strong>
+      Interpretation:
+    </strong>
+
+    <span id="det-interpretation">
+      --
+    </span>
+
+  </div>
+
+
+  <div class="parameter-stats">
+
+    <div class="stat-box">
+
+      <strong>
+        Minimum:
+      </strong>
+
+      <span id="det-min">
+        --
+      </span>
+
+    </div>
+
+
+    <div class="stat-box">
+
+      <strong>
+        Maximum:
+      </strong>
+
+      <span id="det-max">
+        --
+      </span>
+
+    </div>
+
+  </div>
+
+
+  <button
+    class="close-button"
+    onclick="hideDetail()">
+
+    Close
+
+  </button>
+
+</div>
+
+
+
+<!-- =========================================================
+     INDIVIDUAL PARAMETER CHARTS
+     ========================================================= -->
+
+<div
+  class="dashboard-grid"
+  style="margin-bottom:24px;">
+
+
+  <div class="panel minor-chart">
+
+    <div class="panel-header">
+      Turbidity Trend
+    </div>
+
+    <div class="chart-box">
+
+      <canvas
+        id="chartTurbidity">
+      </canvas>
+
+    </div>
+
+  </div>
+
+
+
+  <div class="panel minor-chart">
+
+    <div class="panel-header">
+      pH Trend
+    </div>
+
+    <div class="chart-box">
+
+      <canvas
+        id="chartPH">
+      </canvas>
+
+    </div>
+
+  </div>
+
+
+
+  <div class="panel minor-chart">
+
+    <div class="panel-header">
+      Dissolved Oxygen Trend
+    </div>
+
+    <div class="chart-box">
+
+      <canvas
+        id="chartDO">
+      </canvas>
+
+    </div>
+
+  </div>
+
+
+
+  <div class="panel minor-chart">
+
+    <div class="panel-header">
+      Temperature Trend
+    </div>
+
+    <div class="chart-box">
+
+      <canvas
+        id="chartTemp">
+      </canvas>
+
+    </div>
+
+  </div>
+
+</div>
+
+
+
+<!-- =========================================================
+     COMBINED CHART + CORRELATION
+     ========================================================= -->
+
+<div class="dashboard-grid">
+
+
+  <div class="panel">
+
+    <div class="panel-header">
+
+      Combined Parameter Trend
+
+    </div>
+
+
+    <div class="chart-box">
+
+      <canvas
+        id="lineChart">
+      </canvas>
+
+    </div>
+
+  </div>
+
+
+
+  <div class="panel">
+
+    <div class="panel-header">
+
+      Correlation Matrix
+
+    </div>
+
+
+    <div
+      id="heatmap"
+      class="chart-box">
+
+    </div>
+
+  </div>
+
+</div>
+
+
+
+<script>
+
+/* =========================================================
+   1. FIREBASE CONFIGURATION
+   ========================================================= */
+
+let firebaseConfig = null;
+
+// Backend URL configuration
+// Change this to your Vercel URL when deployed online
+const BACKEND_URL = window.location.hostname === 'localhost' 
+  ? 'http://localhost:3000'
+  : 'https://breathe-bck.vercel.app';  // ← UPDATE THIS WITH YOUR VERCEL URL
+
+// Load Firebase config from backend
+async function initializeFirebase() {
+  try {
+    const response = await fetch(`${BACKEND_URL}/api/config/firebase`);
+    if (!response.ok) throw new Error('Failed to load Firebase config');
+    firebaseConfig = await response.json();
+    firebase.initializeApp(firebaseConfig);
+    console.log('✓ Firebase initialized successfully');
+    console.log(`✓ Backend URL: ${BACKEND_URL}`);
+  } catch (error) {
+    console.error('✗ Firebase initialization error:', error);
+    alert('Failed to initialize Firebase. Please check your configuration.');
+  }
+}
+
+// Initialize Firebase on page load
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initializeFirebase);
+} else {
+  initializeFirebase();
+}
+
+let db = null;
+
+// Get Firestore instance (call after Firebase initialization)
+function getDB() {
+  if (!db && firebaseConfig) {
+    db = firebase.firestore();
+  }
+  return db;
+}
+
+
+
+/* =========================================================
+   2. HISTORY DATA
+   ========================================================= */
+
+const historyData = {
+
+  timestamps: [],
+
+  measuredAt: [],
+
+  receivedAt: [],
+
+  rawDates: [],
+
+  turbidity: [],
+
+  ph: [],
+
+  dissolvedOxygen: [],
+
+  temperature: []
+
+};
+
+
+const MAX_HISTORY = 504;
+
+
+
+/* =========================================================
+   3. PARAMETER INFORMATION
+   ========================================================= */
+
+const paramInfo = {
+
+  dissolvedOxygen: {
+
+    title:
+      "Dissolved Oxygen (DO)",
+
+    def:
+      "The amount of oxygen dissolved in water that is available for aquatic organisms.",
+
+    impact:
+      "Dissolved oxygen is one of the most important indicators of hypoxia. Low DO can cause stress, reduced activity, suffocation, and potentially fish kills.",
+
+    interpretation:
+      "Values below approximately 3 mg/L may indicate stressful conditions, while values below approximately 2 mg/L represent severe hypoxia risk.",
+
+    unit:
+      "mg/L"
+
+  },
+
+
+  temperature: {
+
+    title:
+      "Water Temperature",
+
+    def:
+      "A measurement of the thermal condition of the water.",
+
+    impact:
+      "Warmer water generally holds less dissolved oxygen. Increasing temperature can therefore contribute to hypoxia while also increasing aquatic organisms' oxygen demand.",
+
+    interpretation:
+      "A combination of increasing temperature and decreasing dissolved oxygen may indicate increasing hypoxia risk.",
+
+    unit:
+      "°C"
+
+  },
+
+
+  ph: {
+
+    title:
+      "pH Level",
+
+    def:
+      "A measurement describing how acidic or alkaline the water is, generally expressed on a scale from 0 to 14.",
+
+    impact:
+      "Abnormal or rapidly changing pH can stress aquatic organisms and may indicate changes in biological or chemical processes occurring in the water.",
+
+    interpretation:
+      "pH should be interpreted together with other water-quality parameters rather than being used alone to determine hypoxia.",
+
+    unit:
+      "pH"
+
+  },
+
+
+  turbidity: {
+
+    title:
+      "Turbidity",
+
+    def:
+      "A measurement of the cloudiness or reduced clarity of water caused by suspended particles.",
+
+    impact:
+      "High turbidity can reduce light penetration and potentially limit photosynthesis by aquatic plants and algae, which may influence oxygen availability.",
+
+    interpretation:
+      "Increasing turbidity combined with changing dissolved oxygen may indicate changing environmental conditions that require further investigation.",
+
+    unit:
+      "NTU"
+
+  }
+
+};
+
+
+
+/* =========================================================
+   4. LANDING PAGE
+   ========================================================= */
+
+function enterDashboard() {
+
+  document
+    .getElementById("landingPage")
+    .style.display = "none";
+
+}
+
+
+
+/* =========================================================
+   5. PARAMETER INFORMATION
+   ========================================================= */
+
+function hideDetail() {
+
+  document
+    .getElementById("paramDetailPanel")
+    .classList.add("hidden");
+
+}
+
+
+function showParameter(key) {
+
+  const info =
+    paramInfo[key];
+
+  const values =
+    historyData[key];
+
+
+  document
+    .getElementById("det-title")
+    .textContent =
+      info.title;
+
+
+  document
+    .getElementById("det-def")
+    .textContent =
+      info.def;
+
+
+  document
+    .getElementById("det-impact")
+    .textContent =
+      info.impact;
+
+
+  document
+    .getElementById("det-interpretation")
+    .textContent =
+      info.interpretation;
+
+
+  if (values.length > 0) {
+
+    const min =
+      Math.min(...values);
+
+    const max =
+      Math.max(...values);
+
+
+    document
+      .getElementById("det-min")
+      .textContent =
+        min.toFixed(2)
+        + " "
+        + info.unit;
+
+
+    document
+      .getElementById("det-max")
+      .textContent =
+        max.toFixed(2)
+        + " "
+        + info.unit;
+
+  }
+
+  else {
+
+    document
+      .getElementById("det-min")
+      .textContent =
+        "--";
+
+
+    document
+      .getElementById("det-max")
+      .textContent =
+        "--";
+
+  }
+
+
+  document
+    .getElementById("paramDetailPanel")
+    .classList.remove("hidden");
+
+}
+
+
+
+/* =========================================================
+   6. CHART CREATION
+   ========================================================= */
+
+function createMiniChart(
+  canvasId,
+  color,
+  dataArray
+) {
+
+  return new Chart(
+
+    document
+      .getElementById(canvasId)
+      .getContext("2d"),
+
+    {
+
+      type: "line",
+
+      data: {
+
+        labels:
+          historyData.timestamps,
+
+        datasets: [
+
+          {
+
+            label: "",
+
+            data:
+              dataArray,
+
+            borderColor:
+              color,
+
+            backgroundColor:
+              "rgba(37,99,235,0.10)",
+
+            tension:
+              0.35,
+
+            fill:
+              true,
+
+            pointRadius:
+              2
+
+          }
+
+        ]
+
+      },
+
+
+      options: {
+
+        responsive:
+          true,
+
+        maintainAspectRatio:
+          false,
+
+        plugins: {
+
+          legend: {
+            display: false
+          }
+
+        },
+
+
+        scales: {
+
+          x: {
+
+            display:
+              false
+
+          },
+
+
+          y: {
+
+            ticks: {
+
+              color:
+                "#64748b"
+
+            },
+
+            grid: {
+
+              color:
+                "#e2e8f0"
+
+            }
+
+          }
+
+        }
+
+      }
+
+    }
+
+  );
+
+}
+
+
+
+/* =========================================================
+   7. CHART INITIALIZATION
+   ========================================================= */
+
+const chartTurbidity =
+  createMiniChart(
+    "chartTurbidity",
+    "#f97316",
+    historyData.turbidity
+  );
+
+
+const chartPH =
+  createMiniChart(
+    "chartPH",
+    "#22c55e",
+    historyData.ph
+  );
+
+
+const chartDO =
+  createMiniChart(
+    "chartDO",
+    "#38bdf8",
+    historyData.dissolvedOxygen
+  );
+
+
+const chartTemp =
+  createMiniChart(
+    "chartTemp",
+    "#ef4444",
+    historyData.temperature
+  );
+
+
+
+const lineChart = new Chart(
+
+  document
+    .getElementById("lineChart")
+    .getContext("2d"),
+
+  {
+
+    type: "line",
+
+    data: {
+
+      labels:
+        historyData.timestamps,
+
+      datasets: [
+
+        {
+
+          label:
+            "Turbidity (NTU)",
+
+          borderColor:
+            "#f97316",
+
+          data:
+            historyData.turbidity,
+
+          tension:
+            0.35,
+
+          pointRadius:
+            2,
+
+          fill:
+            false
+
+        },
+
+
+        {
+
+          label:
+            "pH",
+
+          borderColor:
+            "#22c55e",
+
+          data:
+            historyData.ph,
+
+          tension:
+            0.35,
+
+          pointRadius:
+            2,
+
+          fill:
+            false
+
+        },
+
+
+        {
+
+          label:
+            "Dissolved Oxygen (mg/L)",
+
+          borderColor:
+            "#38bdf8",
+
+          data:
+            historyData.dissolvedOxygen,
+
+          tension:
+            0.35,
+
+          pointRadius:
+            2,
+
+          fill:
+            false
+
+        },
+
+
+        {
+
+          label:
+            "Temperature (°C)",
+
+          borderColor:
+            "#ef4444",
+
+          data:
+            historyData.temperature,
+
+          tension:
+            0.35,
+
+          pointRadius:
+            2,
+
+          fill:
+            false
+
+        }
+
+      ]
+
+    },
+
+
+    options: {
+
+      responsive:
+        true,
+
+      maintainAspectRatio:
+        false,
+
+      interaction: {
+
+        mode:
+          "index",
+
+        intersect:
+          false
+
+      },
+
+      plugins: {
+
+        legend: {
+
+          labels: {
+
+            color:
+              "#102a43"
+
+          }
+
+        }
+
+      },
+
+
+      scales: {
+
+        x: {
+
+          ticks: {
+
+            color:
+              "#64748b"
+
+          },
+
+          grid: {
+
+            color:
+              "#e2e8f0"
+
+          }
+
+        },
+
+
+        y: {
+
+          ticks: {
+
+            color:
+              "#64748b"
+
+          },
+
+          grid: {
+
+            color:
+              "#e2e8f0"
+
+          }
+
+        }
+
+      }
+
+    }
+
+  }
+
+);
+
+
+
+/* =========================================================
+   8. PEARSON CORRELATION
+   ========================================================= */
+
+function calcPearson(x,y) {
+
+  const n =
+    Math.min(
+      x.length,
+      y.length
+    );
+
+
+  if (n < 2)
+    return 0;
+
+
+  let meanX =
+    x.slice(0,n)
+      .reduce(
+        (sum,v) =>
+          sum + Number(v),
+        0
+      ) / n;
+
+
+  let meanY =
+    y.slice(0,n)
+      .reduce(
+        (sum,v) =>
+          sum + Number(v),
+        0
+      ) / n;
+
+
+  let numerator = 0;
+
+  let denominatorX = 0;
+
+  let denominatorY = 0;
+
+
+  for(let i=0;i<n;i++) {
+
+    const dx =
+      Number(x[i]) -
+      meanX;
+
+    const dy =
+      Number(y[i]) -
+      meanY;
+
+
+    numerator +=
+      dx * dy;
+
+    denominatorX +=
+      dx * dx;
+
+    denominatorY +=
+      dy * dy;
+
+  }
+
+
+  const denominator =
+    Math.sqrt(
+      denominatorX *
+      denominatorY
+    );
+
+
+  if(
+    denominator === 0 ||
+    !Number.isFinite(denominator)
+  )
+    return 0;
+
+
+  return Number(
+    (
+      numerator /
+      denominator
+    ).toFixed(2)
+  );
+
+}
+
+
+
+/* =========================================================
+   9. CORRELATION HEATMAP
+   ========================================================= */
+
+function updateHeatmap() {
+
+  const keys = [
+
+    "turbidity",
+
+    "ph",
+
+    "dissolvedOxygen",
+
+    "temperature"
+
+  ];
+
+
+  const labels = [
+
+    "Turbidity",
+
+    "pH",
+
+    "DO",
+
+    "Temperature"
+
+  ];
+
+
+  const matrix =
+    keys.map(
+      key1 =>
+        keys.map(
+          key2 =>
+            calcPearson(
+              historyData[key1],
+              historyData[key2]
+            )
+        )
+    );
+
+
+  Plotly.react(
+
+    "heatmap",
+
+    [
+
+      {
+
+        z:
+          matrix,
+
+        x:
+          labels,
+
+        y:
+          labels,
+
+        type:
+          "heatmap",
+
+        colorscale: [
+
+          [0,"#ef4444"],
+
+          [0.5,"#f8fafc"],
+
+          [1,"#22c55e"]
+
+        ],
+
+        zmin:
+          -1,
+
+        zmax:
+          1,
+
+        texttemplate:
+          "%{z}",
+
+        textfont: {
+
+          color:
+            "#0f172a"
+
+        }
+
+      }
+
+    ],
+
+    {
+
+      margin: {
+
+        t: 10,
+
+        b: 40,
+
+        l: 70,
+
+        r: 10
+
+      },
+
+      paper_bgcolor:
+        "transparent",
+
+      plot_bgcolor:
+        "transparent"
+
+    },
+
+    {
+
+      displayModeBar:
+        false
+
+    }
+
+  );
+
+}
+
+
+
+/* =========================================================
+   10. UPDATE CHARTS
+   ========================================================= */
+
+function refreshCharts() {
+
+
+  chartTurbidity.data.labels =
+    historyData.timestamps;
+
+  chartTurbidity.data.datasets[0].data =
+    historyData.turbidity;
+
+
+  chartPH.data.labels =
+    historyData.timestamps;
+
+  chartPH.data.datasets[0].data =
+    historyData.ph;
+
+
+  chartDO.data.labels =
+    historyData.timestamps;
+
+  chartDO.data.datasets[0].data =
+    historyData.dissolvedOxygen;
+
+
+  chartTemp.data.labels =
+    historyData.timestamps;
+
+  chartTemp.data.datasets[0].data =
+    historyData.temperature;
+
+
+  lineChart.data.labels =
+    historyData.timestamps;
+
+
+  lineChart.data.datasets[0].data =
+    historyData.turbidity;
+
+  lineChart.data.datasets[1].data =
+    historyData.ph;
+
+  lineChart.data.datasets[2].data =
+    historyData.dissolvedOxygen;
+
+  lineChart.data.datasets[3].data =
+    historyData.temperature;
+
+
+  chartTurbidity.update();
+
+  chartPH.update();
+
+  chartDO.update();
+
+  chartTemp.update();
+
+  lineChart.update();
+
+}
+
+
+
+/* =========================================================
+   11. DASHBOARD STATUS
+   ========================================================= */
+
+function setLastUpdatedLabel(date) {
+
+  document
+    .getElementById("lastUpdatedLabel")
+    .textContent =
+      "Last update: "
+      +
+      date.toLocaleTimeString();
+
+}
+
+
+function updatePointCountLabel() {
+
+  document
+    .getElementById("pointCountLabel")
+    .textContent =
+      "History: "
+      +
+      historyData.timestamps.length
+      +
+      " points";
+
+}
+
+
+
+/* =========================================================
+   12. ALERT SYSTEM
+   ========================================================= */
+
+function showAlert(message) {
+
+  const banner =
+    document.getElementById(
+      "alertBanner"
+    );
+
+
+  document
+    .getElementById("alertText")
+    .textContent =
+      message;
+
+
+  banner
+    .classList
+    .remove("hidden");
+
+}
+
+
+function hideAlert() {
+
+  document
+    .getElementById("alertBanner")
+    .classList
+    .add("hidden");
+
+}
+
+
+
+/* =========================================================
+   13. UPDATE CURRENT SENSOR CARDS
+   ========================================================= */
+
+function updateCards(
+  reading,
+  dateObj
+) {
+
+
+  document
+    .getElementById("val-turbidity")
+    .innerHTML =
+      `${reading.turb}
+       <span class="unit">NTU</span>`;
+
+
+  document
+    .getElementById("val-ph")
+    .innerHTML =
+      `${reading.ph}
+       <span class="unit">pH</span>`;
+
+
+  document
+    .getElementById("val-do")
+    .innerHTML =
+      `${reading.doVal}
+       <span class="unit">mg/L</span>`;
+
+
+  document
+    .getElementById("val-temp")
+    .innerHTML =
+      `${reading.temp}
+       <span class="unit">°C</span>`;
+
+
+  const doCard =
+    document.getElementById(
+      "card-do"
+    );
+
+
+  if(
+    Number(reading.doVal) < 3.0
+  ) {
+
+    doCard.classList.add(
+      "warning"
+    );
+
+
+    showAlert(
+      "Dissolved Oxygen is below 3.0 mg/L. Potential hypoxia conditions detected."
+    );
+
+  }
+
+  else {
+
+    doCard.classList.remove(
+      "warning"
+    );
+
+    hideAlert();
+
+  }
+
+
+  setLastUpdatedLabel(
+    dateObj
+  );
+
+}
+
+
+
+/* =========================================================
+   14. WEATHER + SMART INTERPRETATION
+   ========================================================= */
+
+async function runEnvironmentalInterpretation(
+  sensorData
+) {
+
+
+  const weatherDisplay =
+    document.getElementById(
+      "weatherDisplay"
+    );
+
+
+  const aiInsight =
+    document.getElementById(
+      "aiInsight"
+    );
+
+
+  try {
+
+
+    const weatherResponse =
+      await fetch(
+        "https://api.open-meteo.com/v1/forecast" +
+        "?latitude=14.6760" +
+        "&longitude=121.0437" +
+        "&current=temperature_2m,relative_humidity_2m,precipitation,rain,weather_code"
+      );
+
+
+    if(!weatherResponse.ok)
+      throw new Error(
+        "Weather request failed"
+      );
+
+
+    const weather =
+      await weatherResponse.json();
+
+
+    const current =
+      weather.current;
+
+
+    const airTemp =
+      current.temperature_2m;
+
+
+    const rain =
+      current.rain || 0;
+
+
+    weatherDisplay.textContent =
+      `Current local weather: ${airTemp}°C | Rain: ${rain} mm`;
+
+
+
+    let insight = "";
+
+
+    const doValue =
+      Number(sensorData.doVal);
+
+
+    const waterTemp =
+      Number(sensorData.temp);
+
+
+    const turbidity =
+      Number(sensorData.turb);
+
+
+    const ph =
+      Number(sensorData.ph);
+
+
+
+    if(doValue < 2) {
+
+      insight =
+        "🚨 SEVERE HYPOXIA RISK: Dissolved oxygen is below 2 mg/L. Aquatic organisms may experience severe oxygen stress. Immediate observation and verification are recommended.";
+
+    }
+
+
+    else if(
+      doValue < 3 &&
+      waterTemp >= 30
+    ) {
+
+      insight =
+        "⚠ HIGH HYPOXIA RISK: Dissolved oxygen is low while water temperature is high. Warmer water generally holds less oxygen, so continued monitoring is strongly recommended.";
+
+    }
+
+
+    else if(
+      doValue < 4
+    ) {
+
+      insight =
+        "⚠ ELEVATED RISK: Dissolved oxygen is below 4 mg/L. Conditions should be monitored closely for further decreases.";
+
+    }
+
+
+    else if(
+      rain > 2 &&
+      turbidity > 40
+    ) {
+
+      insight =
+        "🌧 ENVIRONMENTAL CHANGE DETECTED: Rainfall is occurring while turbidity is elevated. Runoff may be contributing suspended particles to the water.";
+
+    }
+
+
+    else if(
+      waterTemp >= 30 &&
+      doValue < 5
+    ) {
+
+      insight =
+        "🌡 WATCH CONDITION: Water temperature is relatively high while dissolved oxygen is below 5 mg/L. Continue monitoring for a downward DO trend.";
+
+    }
+
+
+    else if(
+      turbidity > 40
+    ) {
+
+      insight =
+        "💧 TURBIDITY ALERT: Elevated turbidity has been detected. Reduced water clarity may affect light penetration and aquatic ecosystem conditions.";
+
+    }
+
+
+    else {
+
+      insight =
+        "✅ CURRENT CONDITIONS APPEAR STABLE: No major hypoxia warning condition was detected from the current sensor readings. Continue continuous monitoring.";
+
+    }
+
+
+    if(
+      ph < 6.5 ||
+      ph > 8.5
+    ) {
+
+      insight +=
+        " The current pH is outside a commonly monitored range and should be investigated together with the other parameters.";
+
+    }
+
+
+    aiInsight.textContent =
+      insight;
+
+
+  }
+
+  catch(error) {
+
+    console.error(
+      "Weather error:",
+      error
+    );
+
+
+    weatherDisplay.textContent =
+      "Weather data temporarily unavailable.";
+
+
+    aiInsight.textContent =
+      generateSensorOnlyInterpretation(
+        sensorData
+      );
+
+  }
+
+}
+
+
+
+/* =========================================================
+   15. SENSOR-ONLY INTERPRETATION
+   ========================================================= */
+
+function generateSensorOnlyInterpretation(
+  data
+) {
+
+  const doValue =
+    Number(data.doVal);
+
+
+  const temp =
+    Number(data.temp);
+
+
+  if(doValue < 2) {
+
+    return "🚨 Severe hypoxia risk detected based on dissolved oxygen.";
+
+  }
+
+
+  if(doValue < 3) {
+
+    return "⚠ High hypoxia risk detected. Dissolved oxygen is below 3 mg/L.";
+
+  }
+
+
+  if(
+    doValue < 4 &&
+    temp > 30
+  ) {
+
+    return "⚠ Elevated risk: relatively warm water combined with low dissolved oxygen.";
+
+  }
+
+
+  if(doValue >= 5) {
+
+    return "✅ Dissolved oxygen is currently at a healthier level. Continue monitoring trends.";
+
+  }
+
+
+  return "Monitoring sensor trends for possible environmental changes.";
+
+}
+
+
+
+/* =========================================================
+   16. FIRESTORE REAL-TIME LISTENER
+   ========================================================= */
+
+function listenToCloudData() {
+
+  const database = getDB();
+  if (!database) {
+    console.error('Firestore not initialized');
+    return;
+  }
+
+  database.collection("water_readings")
+
+    .orderBy(
+      "measuredAt",
+      "desc"
+    )
+
+    .limit(
+      MAX_HISTORY
+    )
+
+    .onSnapshot(
+
+      (snapshot) => {
+
+
+        historyData.measuredAt = [];
+
+        historyData.receivedAt = [];
+
+        historyData.timestamps = [];
+
+        historyData.rawDates = [];
+
+        historyData.turbidity = [];
+
+        historyData.ph = [];
+
+        historyData.dissolvedOxygen = [];
+
+        historyData.temperature = [];
+
+
+
+        const docs =
+          snapshot.docs.reverse();
+
+
+
+        docs.forEach(
+          (doc) => {
+
+
+            const data =
+              doc.data();
+
+
+            if(
+              !data.measuredAt
+            ) {
+
+              return;
+
+            }
+
+
+            const measuredDate =
+              data.measuredAt.toDate();
+
+
+
+            historyData.measuredAt.push(
+              measuredDate
+            );
+
+
+            if(
+              data.receivedAt
+            ) {
+
+              historyData.receivedAt.push(
+                data.receivedAt.toDate()
+              );
+
+            }
+
+            else {
+
+              historyData.receivedAt.push(
+                null
+              );
+
+            }
+
+
+            historyData.timestamps.push(
+
+              measuredDate.toLocaleTimeString(
+                [],
+                {
+                  hour:
+                    "2-digit",
+
+                  minute:
+                    "2-digit",
+
+                  second:
+                    "2-digit"
+                }
+              )
+
+            );
+
+
+            historyData.rawDates.push(
+
+              measuredDate.toLocaleString()
+
+            );
+
+
+
+            historyData.turbidity.push(
+              Number(data.turbidity)
+            );
+
+
+            historyData.ph.push(
+              Number(data.ph)
+            );
+
+
+            historyData.dissolvedOxygen.push(
+              Number(data.dissolvedOxygen)
+            );
+
+
+            historyData.temperature.push(
+              Number(data.temperature)
+            );
+
+          }
+        );
+
+
+
+        if(
+          historyData.measuredAt.length > 0
+        ) {
+
+
+          const latestIndex =
+            historyData.measuredAt.length - 1;
+
+
+          const latestReading = {
+
+            turb:
+              historyData.turbidity[
+                latestIndex
+              ],
+
+            ph:
+              historyData.ph[
+                latestIndex
+              ],
+
+            doVal:
+              historyData.dissolvedOxygen[
+                latestIndex
+              ],
+
+            temp:
+              historyData.temperature[
+                latestIndex
+              ]
+
+          };
+
+
+          updateCards(
+
+            latestReading,
+
+            historyData.measuredAt[
+              latestIndex
+            ]
+
+          );
+
+
+          runEnvironmentalInterpretation(
+            latestReading
+          );
+
+        }
+
+
+
+        updatePointCountLabel();
+
+        refreshCharts();
+
+        updateHeatmap();
+
+
+
+        const status =
+          document.getElementById(
+            "syncStatus"
+          );
+
+
+        status.textContent =
+          "Cloud Connected";
+
+
+        status.style.color =
+          "#166534";
+
+
+        status.style.background =
+          "#dcfce7";
+
+
+        console.log(
+          `Firebase synced: ${historyData.measuredAt.length} readings`
+        );
+
+      },
+
+
+      (error) => {
+
+
+        console.error(
+          "Cloud listener error:",
+          error
+        );
+
+
+        const status =
+          document.getElementById(
+            "syncStatus"
+          );
+
+
+        status.textContent =
+          "Cloud Sync Error";
+
+
+        status.style.color =
+          "#b91c1c";
+
+
+        status.style.background =
+          "#fee2e2";
+
+      }
+
+    );
+
+}
+
+
+
+/* =========================================================
+   17. CSV EXPORT
+   ========================================================= */
+
+function exportDataToCSV() {
+
+
+  const latestCount =
+    Math.min(
+      historyData.timestamps.length,
+      MAX_HISTORY
+    );
+
+
+  const latestRawDates =
+    historyData.rawDates.slice(
+      -latestCount
+    );
+
+
+  const latestTurbidity =
+    historyData.turbidity.slice(
+      -latestCount
+    );
+
+
+  const latestPH =
+    historyData.ph.slice(
+      -latestCount
+    );
+
+
+  const latestDO =
+    historyData.dissolvedOxygen.slice(
+      -latestCount
+    );
+
+
+  const latestTemp =
+    historyData.temperature.slice(
+      -latestCount
+    );
+
+
+
+  const corrTurbPH =
+    calcPearson(
+      latestTurbidity,
+      latestPH
+    );
+
+
+  const corrTurbDO =
+    calcPearson(
+      latestTurbidity,
+      latestDO
+    );
+
+
+  const corrTurbTemp =
+    calcPearson(
+      latestTurbidity,
+      latestTemp
+    );
+
+
+  const corrPHDO =
+    calcPearson(
+      latestPH,
+      latestDO
+    );
+
+
+  const corrPHTemp =
+    calcPearson(
+      latestPH,
+      latestTemp
+    );
+
+
+  const corrDOTemp =
+    calcPearson(
+      latestDO,
+      latestTemp
+    );
+
+
+
+  let csv =
+    "B.R.E.A.T.H.E. Water Quality History Export\n";
+
+
+  csv +=
+    `Latest ${latestCount} readings exported from cloud history.\n\n`;
+
+
+  csv +=
+    "Date & Time,Turbidity (NTU),pH Level,Dissolved Oxygen (mg/L),Temperature (°C)\n";
+
+
+
+  for(
+    let i=0;
+    i<latestCount;
+    i++
+  ) {
+
+    csv +=
+      `"${latestRawDates[i]}",${latestTurbidity[i]},${latestPH[i]},${latestDO[i]},${latestTemp[i]}\n`;
+
+  }
+
+
+
+  csv +=
+    "\nCorrelation Matrix\n";
+
+
+  csv +=
+    "Metric Pair,Correlation\n";
+
+
+  csv +=
+    `Turbidity-pH,${corrTurbPH}\n`;
+
+
+  csv +=
+    `Turbidity-Dissolved Oxygen,${corrTurbDO}\n`;
+
+
+  csv +=
+    `Turbidity-Temperature,${corrTurbTemp}\n`;
+
+
+  csv +=
+    `pH-Dissolved Oxygen,${corrPHDO}\n`;
+
+
+  csv +=
+    `pH-Temperature,${corrPHTemp}\n`;
+
+
+  csv +=
+    `Dissolved Oxygen-Temperature,${corrDOTemp}\n`;
+
+
+
+  const blob =
+    new Blob(
+      [csv],
+      {
+        type:
+          "text/csv"
+      }
+    );
+
+
+  const url =
+    URL.createObjectURL(
+      blob
+    );
+
+
+  const a =
+    document.createElement(
+      "a"
+    );
+
+
+  a.href =
+    url;
+
+
+  a.download =
+    `BREATHE_water_quality_${new Date()
+      .toISOString()
+      .slice(0,10)}.csv`;
+
+
+  document
+    .body
+    .appendChild(a);
+
+
+  a.click();
+
+
+  document
+    .body
+    .removeChild(a);
+
+
+  URL.revokeObjectURL(
+    url
+  );
+
+}
+
+
+
+/* =========================================================
+   18. START SYSTEM
+   ========================================================= */
+
+listenToCloudData();
+
+</script>
+
+
+<!-- =========================================================
+     AI CHAT WIDGET
+     ========================================================= -->
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<style>
+  #breathe-ai-widget {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 10000;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  }
+  
+  #ai-chat-window {
+    display: none;
+    width: 350px;
+    height: 500px;
+    background: #ffffff;
+    border-radius: 16px;
+    box-shadow: 0 12px 30px rgba(37, 99, 235, 0.2);
+    border: 1px solid #cfe4ff;
+    flex-direction: column;
+    overflow: hidden;
+    margin-bottom: 16px;
+  }
+
+  #ai-chat-header {
+    background: linear-gradient(135deg, #2563eb, #38bdf8);
+    color: white;
+    padding: 16px;
+    font-weight: bold;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  #ai-close-btn {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 1.2rem;
+    cursor: pointer;
+  }
+
+  #ai-chat-log {
+    flex: 1;
+    padding: 16px;
+    overflow-y: auto;
+    background: #f8fbff;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .ai-msg {
+    max-width: 85%;
+    padding: 10px 14px;
+    border-radius: 14px;
+    font-size: 0.9rem;
+    line-height: 1.4;
+    word-wrap: break-word;
+  }
+
+  .ai-msg.bot { align-self: flex-start; background: #eef6ff; color: #102a43; border: 1px solid #cfe4ff; border-bottom-left-radius: 4px; }
+  .ai-msg.user { align-self: flex-end; background: #2563eb; color: white; border-bottom-right-radius: 4px; }
+  
+  .ai-msg.bot p { margin-bottom: 8px; }
+  .ai-msg.bot p:last-child { margin-bottom: 0; }
+  .ai-msg.bot strong { color: #0c4a6e; }
+
+  #ai-typing {
+    display: none;
+    font-size: 0.8rem;
+    color: #4c6b8a;
+    padding: 0 16px 10px;
+    font-style: italic;
+  }
+
+  #ai-input-area {
+    display: flex;
+    padding: 12px;
+    border-top: 1px solid #cfe4ff;
+    background: white;
+  }
+
+  #ai-input {
+    flex: 1;
+    padding: 8px 12px;
+    border: 1px solid #cfe4ff;
+    border-radius: 20px;
+    outline: none;
+  }
+
+  #ai-send-btn {
+    background: #2563eb;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 36px;
+    height: 36px;
+    margin-left: 8px;
+    cursor: pointer;
+    font-weight: bold;
+  }
+
+  #ai-toggle-btn {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #2563eb, #38bdf8);
+    color: white;
+    border: none;
+    box-shadow: 0 8px 20px rgba(37, 99, 235, 0.3);
+    cursor: pointer;
+    font-size: 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s;
+    float: right;
+  }
+  
+  #ai-toggle-btn:hover { transform: scale(1.05); }
+</style>
+
+<div id="breathe-ai-widget">
+  <div id="ai-chat-window">
+    <div id="ai-chat-header">
+      <span>AI Water Analyst</span>
+      <button id="ai-close-btn" onclick="toggleAIChat()">×</button>
+    </div>
+    <div id="ai-chat-log">
+      <div class="ai-msg bot">Hello! I am the B.R.E.A.T.H.E. AI Assistant. Ask me to interpret data trends, and correlations!</div>
+    </div>
+    <div id="ai-typing">BREATHE AI is thinking...</div>
+    <div id="ai-input-area">
+      <input type="text" id="ai-input" placeholder="Interpret the trends and correlation...">
+      <button id="ai-send-btn" onclick="sendAIMessage()">➤</button>
+    </div>
+  </div>
+  <button id="ai-toggle-btn" onclick="toggleAIChat()">✨</button>
+</div>
+
+<script>
+  function toggleAIChat() {
+    const win = document.getElementById("ai-chat-window");
+    win.style.display = win.style.display === "flex" ? "none" : "flex";
+  }
+
+  document.getElementById("ai-input").addEventListener("keypress", function(e) {
+    if (e.key === "Enter") sendAIMessage();
+  });
+
+  function getWebsiteVisualContext() {
+    const lastUpdate = document.getElementById("lastUpdatedLabel")?.innerText || "";
+    const pointCount = document.getElementById("pointCountLabel")?.innerText || "";
+    const aiInsight = document.getElementById("aiInsight")?.innerText || "";
+    const weather = document.getElementById("weatherDisplay")?.innerText || "";
+    
+    const turbidity = document.getElementById("val-turbidity")?.innerText || "";
+    const ph = document.getElementById("val-ph")?.innerText || "";
+    const dissolvedOxygen = document.getElementById("val-do")?.innerText || "";
+    const temperature = document.getElementById("val-temp")?.innerText || "";
+
+    return `
+[VISUAL DASHBOARD STATE]
+- Status / Update Info: ${lastUpdate} (${pointCount})
+- Displayed Sensor Cards: Turbidity: ${turbidity}, pH: ${ph}, Dissolved Oxygen: ${dissolvedOxygen}, Temperature: ${temperature}
+- Smart Environmental Interpretation Box: "${aiInsight}"
+- Weather Tag: "${weather}"
+- Note: The user has graphs (Turbidity, pH, DO, Temperature trends) and a Correlation Matrix currently rendered on the page layout displaying these relationships.
+    `.trim();
+  }
+
+  async function sendAIMessage() {
+    const inputField = document.getElementById("ai-input");
+    const chatLog = document.getElementById("ai-chat-log");
+    const typingIndicator = document.getElementById("ai-typing");
+    const text = inputField.value.trim();
+    
+    if (!text) return;
+    inputField.value = "";
+
+    const userMsg = document.createElement("div");
+    userMsg.className = "ai-msg user";
+    userMsg.textContent = text;
+    chatLog.appendChild(userMsg);
+    chatLog.scrollTop = chatLog.scrollHeight;
+
+    typingIndicator.style.display = "block";
+
+    const websiteContext = getWebsiteVisualContext();
+    const systemPrompt = `
+[ROLE]
+You are an independent AI Water Quality Analyst embedded on this dashboard.
+
+[RULES FOR YOUR ANSWER]
+1. Answer the website visitor's question directly, objectively, and professionally based on the website's current visual state, graphs, and panels.
+2. Never act as the admin, website owner, or user.
+3. Keep responses concise, helpful, and informative using standard markdown formatting. Avoid LaTeX symbols for chemistry formulas (use O2, not $O_2$).
+
+${websiteContext}
+    `;
+
+    try {
+      // Call your secure backend instead of calling Gemini API directly
+      const response = await fetch(`${BACKEND_URL}/api/gemini/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: text,
+          systemPrompt: systemPrompt
+        })
+      });
+
+      const data = await response.json();
+      typingIndicator.style.display = "none";
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to generate response from backend.");
+      }
+
+      let botReply = data.reply || "Error: Could not generate a response.";
+
+      const botMsg = document.createElement("div");
+      botMsg.className = "ai-msg bot";
+      botMsg.innerHTML = marked.parse(botReply);
+      chatLog.appendChild(botMsg);
+      chatLog.scrollTop = chatLog.scrollHeight;
+
+    } catch (err) {
+      typingIndicator.style.display = "none";
+      const errMsg = document.createElement("div");
+      errMsg.className = "ai-msg bot";
+      errMsg.textContent = `Backend Connection Error: ${err.message}. Make sure the backend server is running at ${BACKEND_URL}`;
+      chatLog.appendChild(errMsg);
+      chatLog.scrollTop = chatLog.scrollHeight;
+    }
+  }
+</script>
+
+</body>
+</html>
