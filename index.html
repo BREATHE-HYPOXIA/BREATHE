@@ -1482,21 +1482,50 @@ const BACKEND_URL = window.location.hostname === 'localhost'
   : 'https://breathe-nu-ten.vercel.app';
   
 // Load Firebase config from backend
+let db = null;
+
 async function initializeFirebase() {
   try {
-    const response = await fetch(`${BACKEND_URL}/api/config/firebase`);
-    if (!response.ok) throw new Error('Failed to load Firebase config');
+    const response = await fetch(
+      `${BACKEND_URL}/api/config/firebase`
+    );
+
+    if (!response.ok) {
+      throw new Error(
+        `Firebase config request failed: ${response.status}`
+      );
+    }
+
     firebaseConfig = await response.json();
+
+    if (!firebaseConfig || !firebaseConfig.projectId) {
+      throw new Error("Invalid Firebase configuration received");
+    }
+
     firebase.initializeApp(firebaseConfig);
-    console.log('✓ Firebase initialized successfully');
+
+    db = firebase.firestore();
+
+    console.log("✓ Firebase initialized successfully");
     console.log(`✓ Backend URL: ${BACKEND_URL}`);
-    
-    // START LISTENING HERE AFTER INITIALIZATION
+
+    // Start Firestore ONLY after initialization
     listenToCloudData();
 
   } catch (error) {
-    console.error('✗ Firebase initialization error:', error);
-    alert('Failed to initialize Firebase. Please check your configuration.');
+    console.error(
+      "✗ Firebase initialization error:",
+      error
+    );
+
+    document.getElementById("syncStatus").textContent =
+      "Firebase Error";
+
+    document.getElementById("syncStatus").style.color =
+      "#b91c1c";
+
+    document.getElementById("syncStatus").style.background =
+      "#fee2e2";
   }
 }
 
