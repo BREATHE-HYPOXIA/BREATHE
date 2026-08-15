@@ -1536,8 +1536,6 @@ if (document.readyState === 'loading') {
   initializeFirebase();
 }
 
-let db = null;
-
 // Get Firestore instance (call after Firebase initialization)
 function getDB() {
   if (!db && firebaseConfig) {
