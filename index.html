@@ -5724,226 +5724,129 @@ function generateSensorOnlyInterpretation(
    16. FIRESTORE REAL-TIME LISTENER
    ========================================================= */
   
+  function listenToCloudData() {
+
   const database = getDB();
+
   if (!database) {
-    console.error('Firestore not initialized');
+    console.error("Firestore not initialized");
     return;
   }
 
   database.collection("water_readings")
-
-    .orderBy(
-      "measuredAt",
-      "desc"
-    )
-
-    .limit(
-      MAX_HISTORY
-    )
-
+    .orderBy("measuredAt", "desc")
+    .limit(MAX_HISTORY)
     .onSnapshot(
 
       (snapshot) => {
 
-
         historyData.measuredAt = [];
-
         historyData.receivedAt = [];
-
         historyData.timestamps = [];
-
         historyData.rawDates = [];
-
         historyData.turbidity = [];
-
         historyData.ph = [];
-
         historyData.dissolvedOxygen = [];
-
         historyData.temperature = [];
 
+        const docs = snapshot.docs.reverse();
 
+        docs.forEach((doc) => {
 
-        const docs =
-          snapshot.docs.reverse();
+          const data = doc.data();
 
-
-
-        docs.forEach(
-          (doc) => {
-
-
-            const data =
-              doc.data();
-
-
-            if(
-              !data.measuredAt
-            ) {
-
-              return;
-
-            }
-
-
-            const measuredDate =
-              data.measuredAt.toDate();
-
-
-
-            historyData.measuredAt.push(
-              measuredDate
-            );
-
-
-            if(
-              data.receivedAt
-            ) {
-
-              historyData.receivedAt.push(
-                data.receivedAt.toDate()
-              );
-
-            }
-
-            else {
-
-              historyData.receivedAt.push(
-                null
-              );
-
-            }
-
-
-            historyData.timestamps.push(
-
-              measuredDate.toLocaleTimeString(
-                [],
-                {
-                  hour:
-                    "2-digit",
-
-                  minute:
-                    "2-digit",
-
-                  second:
-                    "2-digit"
-                }
-              )
-
-            );
-
-
-            historyData.rawDates.push(
-
-              measuredDate.toLocaleString()
-
-            );
-
-
-
-            historyData.turbidity.push(
-              Number(data.turbidity)
-            );
-
-
-            historyData.ph.push(
-              Number(data.ph)
-            );
-
-
-            historyData.dissolvedOxygen.push(
-              Number(data.dissolvedOxygen)
-            );
-
-
-            historyData.temperature.push(
-              Number(data.temperature)
-            );
-
+          if (!data.measuredAt) {
+            return;
           }
-        );
 
+          const measuredDate =
+            data.measuredAt.toDate();
 
+          historyData.measuredAt.push(measuredDate);
 
-        if(
-          historyData.measuredAt.length > 0
-        ) {
+          historyData.receivedAt.push(
+            data.receivedAt &&
+            typeof data.receivedAt.toDate === "function"
+              ? data.receivedAt.toDate()
+              : null
+          );
 
+          historyData.timestamps.push(
+            measuredDate.toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+              second: "2-digit"
+            })
+          );
+
+          historyData.rawDates.push(
+            measuredDate.toLocaleString()
+          );
+
+          historyData.turbidity.push(
+            Number(data.turbidity ?? 0)
+          );
+
+          historyData.ph.push(
+            Number(data.ph ?? 0)
+          );
+
+          historyData.dissolvedOxygen.push(
+            Number(data.dissolvedOxygen ?? 0)
+          );
+
+          historyData.temperature.push(
+            Number(data.temperature ?? 0)
+          );
+
+        });
+
+        if (historyData.measuredAt.length > 0) {
 
           const latestIndex =
             historyData.measuredAt.length - 1;
 
-
           const latestReading = {
 
             turb:
-              historyData.turbidity[
-                latestIndex
-              ],
+              historyData.turbidity[latestIndex],
 
             ph:
-              historyData.ph[
-                latestIndex
-              ],
+              historyData.ph[latestIndex],
 
             doVal:
-              historyData.dissolvedOxygen[
-                latestIndex
-              ],
+              historyData.dissolvedOxygen[latestIndex],
 
             temp:
-              historyData.temperature[
-                latestIndex
-              ]
+              historyData.temperature[latestIndex]
 
           };
 
-
           updateCards(
-
             latestReading,
-
-            historyData.measuredAt[
-              latestIndex
-            ]
-
+            historyData.measuredAt[latestIndex]
           );
-
 
           runEnvironmentalInterpretation(
             latestReading
           );
-
         }
 
-
-
         updatePointCountLabel();
-
         refreshCharts();
-
         updateHeatmap();
 
-
-
         const status =
-          document.getElementById(
-            "syncStatus"
-          );
-
+          document.getElementById("syncStatus");
 
         status.textContent =
           "Cloud Connected";
 
-
         status.style.color =
           "#166534";
 
-
         status.style.background =
           "#dcfce7";
-
 
         console.log(
           `Firebase synced: ${historyData.measuredAt.length} readings`
@@ -5951,29 +5854,21 @@ function generateSensorOnlyInterpretation(
 
       },
 
-
       (error) => {
-
 
         console.error(
           "Cloud listener error:",
           error
         );
 
-
         const status =
-          document.getElementById(
-            "syncStatus"
-          );
-
+          document.getElementById("syncStatus");
 
         status.textContent =
           "Cloud Sync Error";
 
-
         status.style.color =
           "#b91c1c";
-
 
         status.style.background =
           "#fee2e2";
@@ -5983,7 +5878,6 @@ function generateSensorOnlyInterpretation(
     );
 
 }
-
 
 
 /* =========================================================
