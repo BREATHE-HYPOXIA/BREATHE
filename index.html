@@ -1490,6 +1490,10 @@ async function initializeFirebase() {
     firebase.initializeApp(firebaseConfig);
     console.log('✓ Firebase initialized successfully');
     console.log(`✓ Backend URL: ${BACKEND_URL}`);
+    
+    // START LISTENING HERE AFTER INITIALIZATION
+    listenToCloudData();
+
   } catch (error) {
     console.error('✗ Firebase initialization error:', error);
     alert('Failed to initialize Firebase. Please check your configuration.');
