@@ -1474,76 +1474,140 @@
    ========================================================= */
 
 let firebaseConfig = null;
-
-// Backend URL configuration
-// Change this to your Vercel URL when deployed online
-const BACKEND_URL = window.location.hostname === 'localhost' 
-  ? 'http://localhost:3000'
-  : 'https://breathe-nu-ten.vercel.app';
-  
-// Load Firebase config from backend
 let db = null;
 
+const BACKEND_URL =
+  window.location.hostname === "localhost"
+    ? "http://localhost:3000"
+    : "https://breathe-nu-ten.vercel.app";
+
+
 async function initializeFirebase() {
+
+  const status =
+    document.getElementById("syncStatus");
+
   try {
+
+    status.textContent = "Connecting...";
+    status.style.color = "#2563eb";
+    status.style.background = "#eef6ff";
+
+
+    // Get Firebase configuration from backend
     const response = await fetch(
       `${BACKEND_URL}/api/config/firebase`
     );
 
+
     if (!response.ok) {
+
       throw new Error(
         `Firebase config request failed: ${response.status}`
       );
+
     }
 
-    firebaseConfig = await response.json();
 
-    if (!firebaseConfig || !firebaseConfig.projectId) {
-      throw new Error("Invalid Firebase configuration received");
+    firebaseConfig =
+      await response.json();
+
+
+    if (
+      !firebaseConfig ||
+      !firebaseConfig.projectId
+    ) {
+
+      throw new Error(
+        "Invalid Firebase configuration received"
+      );
+
     }
 
-    firebase.initializeApp(firebaseConfig);
 
-    db = firebase.firestore();
+    // Prevent duplicate initialization
+    if (!firebase.apps.length) {
 
-    console.log("✓ Firebase initialized successfully");
-    console.log(`✓ Backend URL: ${BACKEND_URL}`);
+      firebase.initializeApp(
+        firebaseConfig
+      );
 
-    // Start Firestore ONLY after initialization
+    }
+
+
+    db =
+      firebase.firestore();
+
+
+    console.log(
+      "✓ Firebase initialized successfully"
+    );
+
+    console.log(
+      "✓ Backend URL:",
+      BACKEND_URL
+    );
+
+
+    // IMPORTANT:
+    // Start Firestore only AFTER Firebase is ready
     listenToCloudData();
 
+
   } catch (error) {
+
     console.error(
       "✗ Firebase initialization error:",
       error
     );
 
-    document.getElementById("syncStatus").textContent =
+
+    status.textContent =
       "Firebase Error";
 
-    document.getElementById("syncStatus").style.color =
+
+    status.style.color =
       "#b91c1c";
 
-    document.getElementById("syncStatus").style.background =
+
+    status.style.background =
       "#fee2e2";
+
   }
+
 }
 
-// Initialize Firebase on page load
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', initializeFirebase);
-} else {
-  initializeFirebase();
-}
 
-// Get Firestore instance (call after Firebase initialization)
 function getDB() {
-  if (!db && firebaseConfig) {
-    db = firebase.firestore();
+
+  if (!db) {
+
+    console.error(
+      "Firestore database is not initialized yet."
+    );
+
   }
+
   return db;
+
 }
 
+
+// Start Firebase after the page has loaded
+if (
+  document.readyState === "loading"
+) {
+
+  document.addEventListener(
+    "DOMContentLoaded",
+    initializeFirebase
+  );
+
+} else {
+
+  initializeFirebase();
+
+}
 
 
 /* =========================================================
@@ -2796,7 +2860,6 @@ function generateSensorOnlyInterpretation(
 /* =========================================================
    16. FIRESTORE REAL-TIME LISTENER
    ========================================================= */
-<script>
   
   const database = getDB();
   if (!database) {
