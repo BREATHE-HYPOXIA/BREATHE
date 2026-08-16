@@ -1465,8 +1465,6 @@
 
 </div>
 
-
-
 <script>
 
 /* =========================================================
@@ -1637,6 +1635,56 @@ const historyData = {
 
 const MAX_HISTORY = 504;
 
+/* =========================================================
+   GLOBAL HELPERS
+   ========================================================= */
+
+function safeNumber(value) {
+  const num = Number(value);
+  return Number.isFinite(num) ? num : 0;
+}
+
+let unsubscribeListener = null;
+
+let cachedWeather = null;
+let lastWeatherFetch = 0;
+
+const WEATHER_CACHE_TIME =
+  30 * 60 * 1000;
+
+async function getWeatherData() {
+
+  const now = Date.now();
+
+  if (
+    cachedWeather &&
+    (now - lastWeatherFetch) <
+      WEATHER_CACHE_TIME
+  ) {
+    return cachedWeather;
+  }
+
+  const response = await fetch(
+    "https://api.open-meteo.com/v1/forecast" +
+    "?latitude=14.6760" +
+    "&longitude=121.0437" +
+    "&current=temperature_2m,relative_humidity_2m,precipitation,rain,weather_code"
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      "Weather request failed"
+    );
+  }
+
+  const weather =
+    await response.json();
+
+  cachedWeather = weather;
+  lastWeatherFetch = now;
+
+  return weather;
+}
 
 
 /* =========================================================
@@ -2188,7 +2236,7 @@ const lineChart = new Chart(
    8. PEARSON CORRELATION
    ========================================================= */
 
-function calcPearson(x,y) {
+function calcPearson(x, y) {
 
   const n =
     Math.min(
@@ -2196,58 +2244,42 @@ function calcPearson(x,y) {
       y.length
     );
 
-
   if (n < 2)
-    return 0;
-
+    return null;
 
   let meanX =
-    x.slice(0,n)
+    x.slice(0, n)
       .reduce(
-        (sum,v) =>
+        (sum, v) =>
           sum + Number(v),
         0
       ) / n;
-
 
   let meanY =
-    y.slice(0,n)
+    y.slice(0, n)
       .reduce(
-        (sum,v) =>
+        (sum, v) =>
           sum + Number(v),
         0
       ) / n;
 
-
   let numerator = 0;
-
   let denominatorX = 0;
-
   let denominatorY = 0;
 
-
-  for(let i=0;i<n;i++) {
+  for (let i = 0; i < n; i++) {
 
     const dx =
-      Number(x[i]) -
-      meanX;
+      Number(x[i]) - meanX;
 
     const dy =
-      Number(y[i]) -
-      meanY;
+      Number(y[i]) - meanY;
 
-
-    numerator +=
-      dx * dy;
-
-    denominatorX +=
-      dx * dx;
-
-    denominatorY +=
-      dy * dy;
+    numerator += dx * dy;
+    denominatorX += dx * dx;
+    denominatorY += dy * dy;
 
   }
-
 
   const denominator =
     Math.sqrt(
@@ -2255,13 +2287,14 @@ function calcPearson(x,y) {
       denominatorY
     );
 
-
-  if(
+  if (
     denominator === 0 ||
-    !Number.isFinite(denominator)
-  )
-    return 0;
-
+    !Number.isFinite(
+      denominator
+    )
+  ) {
+    return null;
+  }
 
   return Number(
     (
@@ -2269,10 +2302,7 @@ function calcPearson(x,y) {
       denominator
     ).toFixed(2)
   );
-
 }
-
-
 
 /* =========================================================
    9. CORRELATION HEATMAP
@@ -2307,16 +2337,24 @@ function updateHeatmap() {
 
 
   const matrix =
-    keys.map(
-      key1 =>
-        keys.map(
-          key2 =>
+  keys.map(
+    key1 =>
+      keys.map(
+        key2 => {
+
+          const value =
             calcPearson(
               historyData[key1],
               historyData[key2]
-            )
-        )
-    );
+            );
+
+          return value === null
+            ? 0
+            : value;
+
+        }
+      )
+  );
 
 
   Plotly.react(
@@ -2639,23 +2677,8 @@ async function runEnvironmentalInterpretation(
   try {
 
 
-    const weatherResponse =
-      await fetch(
-        "https://api.open-meteo.com/v1/forecast" +
-        "?latitude=14.6760" +
-        "&longitude=121.0437" +
-        "&current=temperature_2m,relative_humidity_2m,precipitation,rain,weather_code"
-      );
-
-
-    if(!weatherResponse.ok)
-      throw new Error(
-        "Weather request failed"
-      );
-
-
     const weather =
-      await weatherResponse.json();
+  await getWeatherData();
 
 
     const current =
@@ -2774,6 +2797,15 @@ async function runEnvironmentalInterpretation(
 
     }
 
+const prediction =
+  predictNextDO();
+
+if (prediction) {
+
+  insight +=
+    ` Predicted next DO value: ${prediction} mg/L.`;
+
+}
 
     aiInsight.textContent =
       insight;
@@ -2868,10 +2900,11 @@ function generateSensorOnlyInterpretation(
     return;
   }
 
-  database.collection("water_readings")
-    .orderBy("measuredAt", "desc")
-    .limit(MAX_HISTORY)
-    .onSnapshot(
+  unsubscribeListener =
+database.collection("water_readings")
+  .orderBy("measuredAt", "desc")
+  .limit(MAX_HISTORY)
+  .onSnapshot(
 
       (snapshot) => {
 
@@ -2915,24 +2948,24 @@ function generateSensorOnlyInterpretation(
           );
 
           historyData.rawDates.push(
-            measuredDate.toLocaleString()
-          );
+  measuredDate.toISOString()
+);
 
           historyData.turbidity.push(
-            Number(data.turbidity ?? 0)
-          );
+  safeNumber(data.turbidity)
+);
 
-          historyData.ph.push(
-            Number(data.ph ?? 0)
-          );
+historyData.ph.push(
+  safeNumber(data.ph)
+);
 
-          historyData.dissolvedOxygen.push(
-            Number(data.dissolvedOxygen ?? 0)
-          );
+historyData.dissolvedOxygen.push(
+  safeNumber(data.dissolvedOxygen)
+);
 
-          historyData.temperature.push(
-            Number(data.temperature ?? 0)
-          );
+historyData.temperature.push(
+  safeNumber(data.temperature)
+);
 
         });
 
@@ -3018,6 +3051,35 @@ function generateSensorOnlyInterpretation(
 /* =========================================================
    17. CSV EXPORT
    ========================================================= */
+function predictNextDO() {
+
+  const data =
+    historyData
+      .dissolvedOxygen;
+
+  if (
+    data.length < 5
+  ) {
+    return null;
+  }
+
+  const n =
+    data.length;
+
+  const slope =
+    (
+      data[n - 1] -
+      data[0]
+    ) /
+    (
+      n - 1
+    );
+
+  return (
+    data[n - 1] +
+    slope
+  ).toFixed(2);
+}
 
 function exportDataToCSV() {
 
@@ -3213,459 +3275,27 @@ function exportDataToCSV() {
 
 }
 
+window.addEventListener(
+  "beforeunload",
+  () => {
 
-</script>
-
-
-<!-- =========================================================
-     AI CHAT WIDGET
-     ========================================================= -->
-<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-<style>
-  #breathe-ai-widget {
-    position: fixed;
-    bottom: 24px;
-    right: 24px;
-    z-index: 10000;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  }
-  
-  #ai-chat-window {
-    display: none;
-    width: 350px;
-    height: 500px;
-    background: #ffffff;
-    border-radius: 16px;
-    box-shadow: 0 12px 30px rgba(37, 99, 235, 0.2);
-    border: 1px solid #cfe4ff;
-    flex-direction: column;
-    overflow: hidden;
-    margin-bottom: 16px;
-  }
-
-  #ai-chat-header {
-    background: linear-gradient(135deg, #2563eb, #38bdf8);
-    color: white;
-    padding: 16px;
-    font-weight: bold;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-
-  #ai-close-btn {
-    background: none;
-    border: none;
-    color: white;
-    font-size: 1.2rem;
-    cursor: pointer;
-  }
-
-  #ai-chat-log {
-    flex: 1;
-    padding: 16px;
-    overflow-y: auto;
-    background: #f8fbff;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-  }
-
-  .ai-msg {
-    max-width: 85%;
-    padding: 10px 14px;
-    border-radius: 14px;
-    font-size: 0.9rem;
-    line-height: 1.4;
-    word-wrap: break-word;
-  }
-
-  .ai-msg.bot { align-self: flex-start; background: #eef6ff; color: #102a43; border: 1px solid #cfe4ff; border-bottom-left-radius: 4px; }
-  .ai-msg.user { align-self: flex-end; background: #2563eb; color: white; border-bottom-right-radius: 4px; }
-  
-  .ai-msg.bot p { margin-bottom: 8px; }
-  .ai-msg.bot p:last-child { margin-bottom: 0; }
-  .ai-msg.bot strong { color: #0c4a6e; }
-
-  #ai-typing {
-    display: none;
-    font-size: 0.8rem;
-    color: #4c6b8a;
-    padding: 0 16px 10px;
-    font-style: italic;
-  }
-
-  #ai-input-area {
-    display: flex;
-    padding: 12px;
-    border-top: 1px solid #cfe4ff;
-    background: white;
-  }
-
-  #ai-input {
-    flex: 1;
-    padding: 8px 12px;
-    border: 1px solid #cfe4ff;
-    border-radius: 20px;
-    outline: none;
-  }
-
-  #ai-send-btn {
-    background: #2563eb;
-    color: white;
-    border: none;
-    border-radius: 50%;
-    width: 36px;
-    height: 36px;
-    margin-left: 8px;
-    cursor: pointer;
-    font-weight: bold;
-  }
-
-  #ai-toggle-btn {
-    width: 60px;
-    height: 60px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, #2563eb, #38bdf8);
-    color: white;
-    border: none;
-    box-shadow: 0 8px 20px rgba(37, 99, 235, 0.3);
-    cursor: pointer;
-    font-size: 1.5rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: transform 0.2s;
-    float: right;
-  }
-  
-  #ai-toggle-btn:hover { transform: scale(1.05); }
-</style>
-
-<div id="breathe-ai-widget">
-  <div id="ai-chat-window">
-    <div id="ai-chat-header">
-      <span>AI Water Analyst</span>
-      <button id="ai-close-btn" onclick="toggleAIChat()">×</button>
-    </div>
-    <div id="ai-chat-log">
-      <div class="ai-msg bot">Hello! I am the B.R.E.A.T.H.E. AI Assistant. Ask me to interpret data trends, and correlations!</div>
-    </div>
-    <div id="ai-typing">BREATHE AI is thinking...</div>
-    <div id="ai-input-area">
-      <input type="text" id="ai-input" placeholder="Interpret the trends and correlation...">
-      <button id="ai-send-btn" onclick="sendAIMessage()">➤</button>
-    </div>
-  </div>
-  <button id="ai-toggle-btn" onclick="toggleAIChat()">✨</button>
-</div>
-
-<script>
-  function toggleAIChat() {
-    const win = document.getElementById("ai-chat-window");
-    win.style.display = win.style.display === "flex" ? "none" : "flex";
-  }
-
-  document.getElementById("ai-input").addEventListener("keypress", function(e) {
-    if (e.key === "Enter") sendAIMessage();
-  });
-
-  function getWebsiteVisualContext() {
-    const lastUpdate = document.getElementById("lastUpdatedLabel")?.innerText || "";
-    const pointCount = document.getElementById("pointCountLabel")?.innerText || "";
-    const aiInsight = document.getElementById("aiInsight")?.innerText || "";
-    const weather = document.getElementById("weatherDisplay")?.innerText || "";
-    
-    const turbidity = document.getElementById("val-turbidity")?.innerText || "";
-    const ph = document.getElementById("val-ph")?.innerText || "";
-    const dissolvedOxygen = document.getElementById("val-do")?.innerText || "";
-    const temperature = document.getElementById("val-temp")?.innerText || "";
-
-    return `
-[VISUAL DASHBOARD STATE]
-- Status / Update Info: ${lastUpdate} (${pointCount})
-- Displayed Sensor Cards: Turbidity: ${turbidity}, pH: ${ph}, Dissolved Oxygen: ${dissolvedOxygen}, Temperature: ${temperature}
-- Smart Environmental Interpretation Box: "${aiInsight}"
-- Weather Tag: "${weather}"
-- Note: The user has graphs (Turbidity, pH, DO, Temperature trends) and a Correlation Matrix currently rendered on the page layout displaying these relationships.
-    `.trim();
-  }
-
-  async function sendAIMessage() {
-    const inputField = document.getElementById("ai-input");
-    const chatLog = document.getElementById("ai-chat-log");
-    const typingIndicator = document.getElementById("ai-typing");
-    const text = inputField.value.trim();
-    
-    if (!text) return;
-    inputField.value = "";
-
-    const userMsg = document.createElement("div");
-    userMsg.className = "ai-msg user";
-    userMsg.textContent = text;
-    chatLog.appendChild(userMsg);
-    chatLog.scrollTop = chatLog.scrollHeight;
-
-    typingIndicator.style.display = "block";
-
-    const websiteContext = getWebsiteVisualContext();
-    const systemPrompt = `
-[ROLE]
-You are an independent AI Water Quality Analyst embedded on this dashboard.
-
-[RULES FOR YOUR ANSWER]
-1. Answer the website visitor's question directly, objectively, and professionally based on the website's current visual state, graphs, and panels.
-2. Never act as the admin, website owner, or user.
-3. Keep responses concise, helpful, and informative using standard markdown formatting. Avoid LaTeX symbols for chemistry formulas (use O2, not $O_2$).
-
-${websiteContext}
-    `;
-
-    try {
-      // Call your secure backend instead of calling Gemini API directly
-      const response = await fetch(`${BACKEND_URL}/api/gemini/chat`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          message: text,
-          systemPrompt: systemPrompt
-        })
-      });
-
-      const data = await response.json();
-      typingIndicator.style.display = "none";
-
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to generate response from backend.");
-      }
-
-      let botReply = data.reply || "Error: Could not generate a response.";
-
-      const botMsg = document.createElement("div");
-      botMsg.className = "ai-msg bot";
-      botMsg.innerHTML = marked.parse(botReply);
-      chatLog.appendChild(botMsg);
-      chatLog.scrollTop = chatLog.scrollHeight;
-
-    } catch (err) {
-      typingIndicator.style.display = "none";
-      const errMsg = document.createElement("div");
-      errMsg.className = "ai-msg bot";
-      errMsg.textContent = `Backend Connection Error: ${err.message}. Make sure the backend server is running at ${BACKEND_URL}`;
-      chatLog.appendChild(errMsg);
-      chatLog.scrollTop = chatLog.scrollHeight;
+    if (
+      unsubscribeListener
+    ) {
+      unsubscribeListener();
     }
+
   }
+);
+
 </script>
 
-</body>
-</html>
-
-
-
-
-/* =========================================================
-   17. CSV EXPORT
-   ========================================================= */
-
-function exportDataToCSV() {
-
-
-  const latestCount =
-    Math.min(
-      historyData.timestamps.length,
-      MAX_HISTORY
-    );
-
-
-  const latestRawDates =
-    historyData.rawDates.slice(
-      -latestCount
-    );
-
-
-  const latestTurbidity =
-    historyData.turbidity.slice(
-      -latestCount
-    );
-
-
-  const latestPH =
-    historyData.ph.slice(
-      -latestCount
-    );
-
-
-  const latestDO =
-    historyData.dissolvedOxygen.slice(
-      -latestCount
-    );
-
-
-  const latestTemp =
-    historyData.temperature.slice(
-      -latestCount
-    );
-
-
-
-  const corrTurbPH =
-    calcPearson(
-      latestTurbidity,
-      latestPH
-    );
-
-
-  const corrTurbDO =
-    calcPearson(
-      latestTurbidity,
-      latestDO
-    );
-
-
-  const corrTurbTemp =
-    calcPearson(
-      latestTurbidity,
-      latestTemp
-    );
-
-
-  const corrPHDO =
-    calcPearson(
-      latestPH,
-      latestDO
-    );
-
-
-  const corrPHTemp =
-    calcPearson(
-      latestPH,
-      latestTemp
-    );
-
-
-  const corrDOTemp =
-    calcPearson(
-      latestDO,
-      latestTemp
-    );
-
-
-
-  let csv =
-    "B.R.E.A.T.H.E. Water Quality History Export\n";
-
-
-  csv +=
-    `Latest ${latestCount} readings exported from cloud history.\n\n`;
-
-
-  csv +=
-    "Date & Time,Turbidity (NTU),pH Level,Dissolved Oxygen (mg/L),Temperature (°C)\n";
-
-
-
-  for(
-    let i=0;
-    i<latestCount;
-    i++
-  ) {
-
-    csv +=
-      `"${latestRawDates[i]}",${latestTurbidity[i]},${latestPH[i]},${latestDO[i]},${latestTemp[i]}\n`;
-
-  }
-
-
-
-  csv +=
-    "\nCorrelation Matrix\n";
-
-
-  csv +=
-    "Metric Pair,Correlation\n";
-
-
-  csv +=
-    `Turbidity-pH,${corrTurbPH}\n`;
-
-
-  csv +=
-    `Turbidity-Dissolved Oxygen,${corrTurbDO}\n`;
-
-
-  csv +=
-    `Turbidity-Temperature,${corrTurbTemp}\n`;
-
-
-  csv +=
-    `pH-Dissolved Oxygen,${corrPHDO}\n`;
-
-
-  csv +=
-    `pH-Temperature,${corrPHTemp}\n`;
-
-
-  csv +=
-    `Dissolved Oxygen-Temperature,${corrDOTemp}\n`;
-
-
-
-  const blob =
-    new Blob(
-      [csv],
-      {
-        type:
-          "text/csv"
-      }
-    );
-
-
-  const url =
-    URL.createObjectURL(
-      blob
-    );
-
-
-  const a =
-    document.createElement(
-      "a"
-    );
-
-
-  a.href =
-    url;
-
-
-  a.download =
-    `BREATHE_water_quality_${new Date()
-      .toISOString()
-      .slice(0,10)}.csv`;
-
-
-  document
-    .body
-    .appendChild(a);
-
-
-  a.click();
-
-
-  document
-    .body
-    .removeChild(a);
-
-
-  URL.revokeObjectURL(
-    url
-  );
-
-}
 
 <!-- =========================================================
      AI CHAT WIDGET
      ========================================================= -->
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
 <style>
   #breathe-ai-widget {
     position: fixed;
@@ -3888,7 +3518,10 @@ ${websiteContext}
 
       const botMsg = document.createElement("div");
       botMsg.className = "ai-msg bot";
-      botMsg.innerHTML = marked.parse(botReply);
+      botMsg.innerHTML =
+  DOMPurify.sanitize(
+    marked.parse(botReply)
+  );
       chatLog.appendChild(botMsg);
       chatLog.scrollTop = chatLog.scrollHeight;
 
