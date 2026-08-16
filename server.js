@@ -35,7 +35,7 @@ app.post('/api/gemini/chat', async (req, res) => {
     }
 
     const model = genAI.getGenerativeModel({
-      model: 'gemini-1.5-flash',
+      model: 'gemini-3.6-flash',
       systemInstruction: systemPrompt || 'You are a helpful water quality analysis assistant.'
     });
 
