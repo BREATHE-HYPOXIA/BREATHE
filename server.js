@@ -5,6 +5,8 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 
 dotenv.config();
 
+console.log("ENV FILE TEST:", process.env.GEMINI_API_KEY);
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -48,7 +50,7 @@ app.post('/api/gemini/chat', async (req, res) => {
 
     const model =
       genAI.getGenerativeModel({
-        model: 'gemini-2.5-flash',
+        model: 'gemini-3.6-flash',
         systemInstruction:
           systemPrompt ||
           'You are a helpful water quality analysis assistant.'
@@ -96,7 +98,7 @@ app.get('/api/test/gemini', async (req, res) => {
 
     const model =
       genAI.getGenerativeModel({
-        model: 'gemini-2.5-flash'
+        model: 'gemini-3.6-flash'
       });
 
     const result =
