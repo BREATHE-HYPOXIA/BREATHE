@@ -2927,18 +2927,25 @@ database.collection("water_readings")
             return;
           }
 
-         const measuredAt = data.measuredAt?.toDate
-    ? data.measuredAt.toDate()
-    : new Date(data.measuredAt);
+        const measuredDate = data.measuredAt
+  ? (
+      typeof data.measuredAt.toDate === "function"
+        ? data.measuredAt.toDate()
+        : new Date(data.measuredAt)
+    )
+  : null;
 
-          historyData.measuredAt.push(measuredDate);
+historyData.measuredAt.push(measuredDate);
 
-          historyData.receivedAt.push(
-            data.receivedAt &&
-            typeof data.receivedAt.toDate === "function"
-              ? data.receivedAt.toDate()
-              : null
-          );
+historyData.receivedAt.push(
+  data.receivedAt
+    ? (
+        typeof data.receivedAt.toDate === "function"
+          ? data.receivedAt.toDate()
+          : new Date(data.receivedAt)
+      )
+    : null
+);
 
           historyData.timestamps.push(
             measuredDate.toLocaleTimeString([], {
