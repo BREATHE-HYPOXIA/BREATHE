@@ -2927,8 +2927,9 @@ database.collection("water_readings")
             return;
           }
 
-          const measuredDate =
-            data.measuredAt.toDate();
+         const measuredAt = data.measuredAt?.toDate
+    ? data.measuredAt.toDate()
+    : new Date(data.measuredAt);
 
           historyData.measuredAt.push(measuredDate);
 
