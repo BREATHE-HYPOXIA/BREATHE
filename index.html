@@ -489,7 +489,7 @@
 
 <!-- SENSOR CARDS -->
 <div class="cards-grid">
-  <!-- TURBIDITY (LOW / MEDIUM / HIGH) -->
+  <!-- TURBIDITY (DYNAMIC CONVERSION: LOW / MEDIUM / HIGH) -->
   <div class="card" style="border-left:5px solid #f97316;" onclick="showParameter('turbidity')">
     <div class="card-title">
       Turbidity Level
@@ -648,11 +648,6 @@ async function initializeFirebase() {
   }
 }
 
-function getDB() {
-  if (!db) console.error("Firestore database is not initialized yet.");
-  return db;
-}
-
 if (document.readyState === "loading") {
   document.addEventListener("DOMContentLoaded", initializeFirebase);
 } else {
@@ -660,12 +655,12 @@ if (document.readyState === "loading") {
 }
 
 /* =========================================================
-   2. HISTORY DATA & TURBIDITY CONVERTERS
+   2. HISTORY DATA & DYNAMIC NTU THRESHOLD CONVERTER
    ========================================================= */
 const historyData = {
   timestamps: [],
-  turbidity: [],          // Stored as numeric values (1=Low, 2=Medium, 3=High) for charts/correlations
-  rawTurbidityLevel: [],  // Stored as strings ("Low", "Medium", "High")
+  turbidity: [],          // Stores 1 (Low), 2 (Medium), 3 (High) for mathematical charts
+  rawTurbidityLevel: [],  // Stores textual display strings "Low", "Medium", "High"
   ph: [],
   dissolvedOxygen: [],
   temperature: []
@@ -673,26 +668,31 @@ const historyData = {
 
 const MAX_HISTORY = 504;
 
-function formatTurbidityText(val) {
-  if (typeof val === "string") {
-    const s = val.trim().toLowerCase();
-    if (s === "low") return "Low";
-    if (s === "medium" || s === "med") return "Medium";
-    if (s === "high") return "High";
+// Dynamically classifies raw numeric NTU values or existing string values
+function convertNTUToLevel(value) {
+  if (value === null || value === undefined) {
+    return { label: "--", numeric: 0 };
   }
-  const n = Number(val);
-  if (isNaN(n)) return "--";
-  if (n < 10) return "Low";
-  if (n <= 50) return "Medium";
-  return "High";
-}
 
-function turbidityToNumeric(val) {
-  const text = formatTurbidityText(val);
-  if (text === "Low") return 1;
-  if (text === "Medium") return 2;
-  if (text === "High") return 3;
-  return 0;
+  // If Firebase already sends qualitative text string
+  if (typeof value === "string") {
+    const s = value.trim().toLowerCase();
+    if (s === "low") return { label: "Low", numeric: 1 };
+    if (s === "medium" || s === "med") return { label: "Medium", numeric: 2 };
+    if (s === "high") return { label: "High", numeric: 3 };
+  }
+
+  // Convert raw numeric NTU value from sensor into Low/Medium/High
+  const ntu = Number(value);
+  if (isNaN(ntu)) return { label: "--", numeric: 0 };
+  
+  if (ntu < 10) {
+    return { label: "Low", numeric: 1 };
+  } else if (ntu <= 50) {
+    return { label: "Medium", numeric: 2 };
+  } else {
+    return { label: "High", numeric: 3 };
+  }
 }
 
 function safeNumber(value) {
@@ -727,7 +727,7 @@ const paramInfo = {
   },
   turbidity: {
     title: "Turbidity Level",
-    def: "A qualitative assessment (Low, Medium, High) of water clarity affected by suspended sediment, algae, or organic particles.",
+    def: "A qualitative assessment (Low, Medium, High) of water clarity based on raw sensor telemetry.",
     impact: "High turbidity reduces light penetration, limiting photosynthesis and potentially lowering dissolved oxygen levels.",
     interpretation: "Elevated turbidity combined with high temperature and falling oxygen levels signals potential ecosystem degradation.",
     unit: "Level"
@@ -984,13 +984,19 @@ function listenToCloudData() {
       docs.reverse(); // Chronological order
 
       docs.forEach(data => {
-        const timeStr = data.timestamp ? new Date(data.timestamp.toDate ? data.timestamp.toDate() : data.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "--:--";
-        const rawTurb = data.turbidityLevel || data.turbidity || "Low";
-        const turbText = formatTurbidityText(rawTurb);
+        const timeStr = data.timestamp 
+          ? new Date(data.timestamp.toDate ? data.timestamp.toDate() : data.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) 
+          : "--:--";
+        
+        // 1. Read raw input (numeric NTU or pre-formatted string)
+        const rawTurb = data.turbidity !== undefined ? data.turbidity : data.turbidityLevel;
+        
+        // 2. Automatically classify into Low / Medium / High
+        const parsedTurb = convertNTUToLevel(rawTurb);
 
         historyData.timestamps.push(timeStr);
-        historyData.rawTurbidityLevel.push(turbText);
-        historyData.turbidity.push(turbidityToNumeric(rawTurb));
+        historyData.rawTurbidityLevel.push(parsedTurb.label);
+        historyData.turbidity.push(parsedTurb.numeric);
         historyData.ph.push(safeNumber(data.pH || data.ph));
         historyData.dissolvedOxygen.push(safeNumber(data.dissolvedOxygen || data.do));
         historyData.temperature.push(safeNumber(data.temperature || data.temp));
@@ -1000,10 +1006,11 @@ function listenToCloudData() {
       const latestDo = safeNumber(latest.dissolvedOxygen || latest.do);
       const latestPh = safeNumber(latest.pH || latest.ph);
       const latestTemp = safeNumber(latest.temperature || latest.temp);
-      const latestTurbText = formatTurbidityText(latest.turbidityLevel || latest.turbidity || "Low");
+      const latestRawTurb = latest.turbidity !== undefined ? latest.turbidity : latest.turbidityLevel;
+      const latestParsedTurb = convertNTUToLevel(latestRawTurb);
 
       // Update Card Values
-      document.getElementById("val-turbidity").textContent = latestTurbText;
+      document.getElementById("val-turbidity").textContent = latestParsedTurb.label;
       document.getElementById("val-ph").innerHTML = `${latestPh.toFixed(2)} <span class="unit">pH</span>`;
       document.getElementById("val-do").innerHTML = `${latestDo.toFixed(2)} <span class="unit">mg/L</span>`;
       document.getElementById("val-temp").innerHTML = `${latestTemp.toFixed(1)} <span class="unit">°C</span>`;
@@ -1034,7 +1041,7 @@ function listenToCloudData() {
 
       // Heatmap & AI Insights
       updateHeatmap();
-      updateAIInsight(latestDo, latestTemp, latestPh, latestTurbText);
+      updateAIInsight(latestDo, latestTemp, latestPh, latestParsedTurb.label);
     }, error => {
       console.error("Firestore Listener Error:", error);
       document.getElementById("syncStatus").textContent = "Connection Lost";
