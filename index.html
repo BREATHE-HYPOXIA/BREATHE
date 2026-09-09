@@ -3,148 +3,780 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
   <title>B.R.E.A.T.H.E. | Hypoxia Monitoring System</title>
-  <!-- Tailwind CSS -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Chart.js -->
+
+  <!-- External Libraries -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+
   <!-- Firebase JS SDK v8 -->
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-</head>
-<body class="bg-[#0b0f19] text-white min-h-screen p-4 sm:p-6 font-sans">
 
-  <!-- Header -->
-  <header class="flex flex-wrap justify-between items-center mb-6 pb-4 border-b border-gray-800 gap-4">
-    <div>
-      <h1 class="text-2xl font-bold tracking-wide">B.R.E.A.T.H.E. Station 01</h1>
-      <p class="text-xs text-gray-400">Water Quality & Hypoxia Monitoring System</p>
-      <div class="flex gap-4 text-xs text-gray-400 mt-2">
-        <span>Last update: <strong id="last-update-time" class="text-gray-200">Waiting for cloud data...</strong></span>
-        <span>History: <strong id="history-count" class="text-gray-200">0 points</strong></span>
+  <style>
+    :root {
+      --bg-main: #f5faff;
+      --bg-panel: #ffffff;
+      --bg-soft: #eef6ff;
+      --text-main: #102a43;
+      --text-sub: #4c6b8a;
+      --border-color: #cfe4ff;
+      --accent: #2563eb;
+      --accent-2: #38bdf8;
+      --success: #22c55e;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --shadow: 0 12px 30px rgba(37, 99, 235, 0.12);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #f8fbff 0%, #eef6ff 100%);
+      color: var(--text-main);
+      padding: 24px;
+    }
+
+    /* Landing Page */
+    #landingPage {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(135deg, #0f172a, #172554, #0c4a6e);
+      color: white;
+      z-index: 9999;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      padding: 40px;
+      overflow-y: auto;
+    }
+
+    .landing-content {
+      max-width: 950px;
+      width: 100%;
+    }
+
+    .landing-logo {
+      font-size: clamp(3rem, 8vw, 6rem);
+      font-weight: 800;
+      letter-spacing: 5px;
+      color: #38bdf8;
+      margin-bottom: 10px;
+    }
+
+    .landing-subtitle {
+      font-size: 1.2rem;
+      color: #cbd5e1;
+      margin-bottom: 15px;
+      letter-spacing: 1px;
+    }
+
+    .landing-description {
+      max-width: 750px;
+      margin: auto;
+      line-height: 1.7;
+      color: #cbd5e1;
+      font-size: 1rem;
+    }
+
+    .goals-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 18px;
+      margin: 30px 0;
+      text-align: left;
+    }
+
+    .goal-card {
+      background: rgba(255,255,255,0.08);
+      padding: 20px;
+      border-radius: 15px;
+      border: 1px solid rgba(255,255,255,0.12);
+      backdrop-filter: blur(8px);
+      transition: 0.2s;
+    }
+
+    .goal-card:hover {
+      transform: translateY(-3px);
+      background: rgba(255,255,255,0.12);
+    }
+
+    .goal-card h3 {
+      color: #38bdf8;
+      margin-bottom: 8px;
+    }
+
+    .goal-card p {
+      color: #cbd5e1;
+      line-height: 1.5;
+      font-size: 14px;
+    }
+
+    .btn-enter {
+      background: linear-gradient(135deg, #2563eb, #38bdf8);
+      color: white;
+      padding: 15px 40px;
+      border: none;
+      border-radius: 30px;
+      font-weight: bold;
+      cursor: pointer;
+      font-size: 1.1rem;
+      transition: 0.3s;
+      box-shadow: 0 10px 30px rgba(37,99,235,0.35);
+    }
+
+    .btn-enter:hover {
+      transform: translateY(-2px) scale(1.03);
+      box-shadow: 0 15px 35px rgba(56,189,248,0.35);
+    }
+
+    /* Header */
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 24px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    header h1 {
+      font-size: 28px;
+    }
+
+    .status-container {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .status-badge {
+      background: var(--bg-soft);
+      border: 1px solid #bfdbfe;
+      padding: 8px 14px;
+      border-radius: 999px;
+      font-size: 13px;
+      color: var(--accent);
+    }
+
+    .live-badge {
+      background: #dcfce7;
+      color: #166534;
+      border-color: #bbf7d0;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .btn-export {
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      color: white;
+      border: none;
+      padding: 10px 18px;
+      border-radius: 999px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .btn-export:hover {
+      opacity: 0.9;
+    }
+
+    /* Control Panel */
+    .control-panel {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .control-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      background: var(--bg-soft);
+      border: 1px solid var(--border-color);
+      padding: 10px 14px;
+      border-radius: 999px;
+      font-size: 13px;
+      color: var(--text-sub);
+    }
+
+    /* Alert Banner */
+    .alert-banner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+      padding: 16px 20px;
+      border-radius: 18px;
+      margin-bottom: 24px;
+      background: rgba(220,38,38,0.10);
+      border: 1px solid rgba(220,38,38,0.30);
+      color: #b91c1c;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    /* Sensor Cards */
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .card {
+      background: var(--bg-panel);
+      border: 1px solid var(--border-color);
+      padding: 22px;
+      border-radius: 18px;
+      min-height: 125px;
+      transition: transform 0.18s ease, box-shadow 0.18s ease;
+      cursor: pointer;
+      box-shadow: var(--shadow);
+    }
+
+    .card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 18px 35px rgba(37,99,235,0.18);
+    }
+
+    .card-title {
+      font-size: 12px;
+      color: var(--text-sub);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .card-value {
+      font-size: 32px;
+      font-weight: 700;
+      line-height: 1.1;
+    }
+
+    .unit {
+      font-size: 14px;
+      color: var(--text-sub);
+      margin-left: 5px;
+    }
+
+    /* AI / Smart Interpretation */
+    .ai-panel {
+      background: linear-gradient(135deg, #172554, #1e3a8a);
+      color: #f8fafc;
+      padding: 24px;
+      border-radius: 18px;
+      margin-bottom: 24px;
+      border-left: 6px solid #10b981;
+      box-shadow: 0 15px 35px rgba(30,64,175,0.18);
+    }
+
+    .ai-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+      color: #34d399;
+      font-weight: bold;
+      text-transform: uppercase;
+      font-size: 0.9rem;
+      letter-spacing: 0.05em;
+    }
+
+    .ai-content {
+      line-height: 1.7;
+      font-size: 1rem;
+      color: #e0f2fe;
+    }
+
+    /* Parameter Panel */
+    .parameter-panel {
+      background: white;
+      border: 2px solid var(--accent);
+      padding: 25px;
+      border-radius: 18px;
+      margin-bottom: 24px;
+      box-shadow: 0 20px 40px rgba(37,99,235,0.12);
+    }
+
+    .parameter-panel h2 {
+      margin-bottom: 15px;
+    }
+
+    .definition-box {
+      margin: 15px 0;
+      padding: 16px;
+      background: #f0f7ff;
+      border-radius: 10px;
+      color: #1e40af;
+      line-height: 1.6;
+    }
+
+    .parameter-impact {
+      line-height: 1.6;
+      margin-bottom: 15px;
+    }
+
+    .parameter-stats {
+      display: flex;
+      gap: 30px;
+      flex-wrap: wrap;
+      margin-top: 15px;
+    }
+
+    .stat-box {
+      background: #f8fbff;
+      border: 1px solid var(--border-color);
+      padding: 14px 20px;
+      border-radius: 12px;
+    }
+
+    .close-button {
+      margin-top: 18px;
+      padding: 9px 20px;
+      border: none;
+      background: var(--accent);
+      color: white;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    /* Grid Layout */
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+
+    .panel {
+      background: white;
+      border: 1px solid var(--border-color);
+      padding: 20px;
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+    }
+
+    .panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+      font-size: 16px;
+      font-weight: 700;
+    }
+
+    .chart-box {
+      height: 250px;
+      position: relative;
+    }
+
+    .minor-chart .chart-box {
+      height: 210px;
+    }
+
+    .warning {
+      animation: blink-red 1s infinite;
+      border-color: #dc2626 !important;
+      box-shadow: 0 0 18px rgba(220,38,38,0.55);
+    }
+
+    @keyframes blink-red {
+      0%, 50%, 100% { background-color: rgba(248,113,113,0.12); }
+      25%, 75% { background-color: transparent; }
+    }
+
+    @media (max-width: 900px) {
+      .dashboard-grid { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 700px) {
+      body { padding: 15px; }
+      .goals-grid { grid-template-columns: 1fr; }
+      header { align-items: flex-start; }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- Landing Page -->
+  <div id="landingPage">
+    <div class="landing-content">
+      <div class="landing-logo">B.R.E.A.T.H.E.</div>
+      <div class="landing-subtitle">Biological Risk Evaluation and Aquatic Trends for Hypoxia Events</div>
+      <p class="landing-description">
+        B.R.E.A.T.H.E. is a water-quality monitoring system designed to continuously observe important aquatic parameters and help identify environmental conditions associated with hypoxia and potential fish-kill events.
+      </p>
+
+      <div class="goals-grid">
+        <div class="goal-card">
+          <h3>Early Warning</h3>
+          <p>Continuously monitor dissolved oxygen and other water-quality parameters to help identify potentially dangerous conditions before they become severe.</p>
+        </div>
+        <div class="goal-card">
+          <h3>Water Quality Monitoring</h3>
+          <p>Track dissolved oxygen, temperature, pH, and turbidity through a centralized monitoring dashboard.</p>
+        </div>
+        <div class="goal-card">
+          <h3>Environmental Analysis</h3>
+          <p>Examine relationships between water-quality parameters through trends and correlation analysis.</p>
+        </div>
+        <div class="goal-card">
+          <h3>Data Privacy</h3>
+          <p>Data collected by the system is intended primarily for academic research, device testing, and environmental monitoring purposes.</p>
+        </div>
       </div>
+
+      <button class="btn-enter" onclick="enterDashboard()">Enter Monitoring Station</button>
     </div>
-    <div class="flex items-center gap-3">
-      <button class="bg-blue-600 hover:bg-blue-700 text-xs px-4 py-2 rounded-lg font-medium transition">Download History</button>
-      <span id="status-badge" class="bg-yellow-600/20 text-yellow-400 border border-yellow-500/30 text-xs px-3 py-1.5 rounded-full font-medium">Connecting...</span>
-      <span class="bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 text-xs px-3 py-1.5 rounded-full font-medium">LIVE DATA</span>
-      <span class="text-xs text-gray-400 bg-gray-800 px-3 py-1.5 rounded-lg border border-gray-700">Sampling: 20 min</span>
+  </div>
+
+  <!-- Main Header -->
+  <header>
+    <div>
+      <h1>B.R.E.A.T.H.E. Station 01</h1>
+      <p style="color:var(--text-sub); margin-top:6px; font-size:15px;">Water Quality & Hypoxia Monitoring System</p>
+    </div>
+    <div class="status-container">
+      <button class="btn-export" onclick="exportDataToCSV()">Download History</button>
+      <div class="status-badge" id="syncStatus">Connecting...</div>
+      <div class="status-badge live-badge">Live Data</div>
+      <div class="status-badge">Sampling: 20 min</div>
     </div>
   </header>
 
+  <!-- Alert Banner -->
+  <div id="alertBanner" class="alert-banner hidden">
+    <strong>⚠ Hypoxia Warning</strong>
+    <span id="alertText">Dissolved Oxygen dropped below safe levels.</span>
+    <button class="close-button" onclick="hideAlert()">Dismiss</button>
+  </div>
+
+  <!-- Status Bar -->
+  <div class="control-panel">
+    <div class="control-group">
+      <span class="status-pill" id="lastUpdatedLabel">Last update: Waiting for cloud data...</span>
+      <span class="status-pill" id="pointCountLabel">History: 0 points</span>
+    </div>
+  </div>
+
   <!-- Smart Environmental Interpretation -->
-  <div class="bg-blue-950/40 border border-blue-800/50 rounded-xl p-4 mb-6">
-    <div class="flex items-center gap-2 text-blue-400 text-xs font-semibold uppercase tracking-wider mb-1">
-      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-      Smart Environmental Interpretation
-    </div>
-    <p id="interpretation-text" class="text-sm font-medium text-blue-200">Waiting for sensor data...</p>
+  <div class="ai-panel">
+    <div class="ai-header">✨ Smart Environmental Interpretation</div>
+    <div class="ai-content" id="aiInsight">Waiting for sensor data...</div>
   </div>
 
-  <!-- Metric Cards -->
-  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-    <div class="bg-gray-900/60 border-l-4 border-l-blue-500 border border-gray-800 rounded-xl p-4">
-      <p class="text-xs text-gray-400 font-semibold uppercase">Turbidity Level</p>
-      <div class="flex items-baseline gap-2 mt-2">
-        <span id="turbidity-val" class="text-3xl font-bold">--</span>
-      </div>
+  <!-- Sensor Cards -->
+  <div class="cards-grid">
+    <div class="card" style="border-left:5px solid #f97316;" onclick="showParameter('turbidity')">
+      <div class="card-title">Turbidity <span>ℹ️</span></div>
+      <div class="card-value" id="val-turbidity">--</div>
     </div>
-    <div class="bg-gray-900/60 border-l-4 border-l-emerald-500 border border-gray-800 rounded-xl p-4">
-      <p class="text-xs text-gray-400 font-semibold uppercase">pH Level</p>
-      <div class="flex items-baseline gap-2 mt-2">
-        <span id="ph-val" class="text-3xl font-bold">--</span>
-        <span class="text-xs text-gray-400">pH</span>
-      </div>
+
+    <div class="card" style="border-left:5px solid #22c55e;" onclick="showParameter('ph')">
+      <div class="card-title">pH Level <span>ℹ️</span></div>
+      <div class="card-value"><span id="val-ph">--</span><span class="unit">pH</span></div>
     </div>
-    <div class="bg-gray-900/60 border-l-4 border-l-cyan-500 border border-gray-800 rounded-xl p-4">
-      <p class="text-xs text-gray-400 font-semibold uppercase">Dissolved Oxygen</p>
-      <div class="flex items-baseline gap-2 mt-2">
-        <span id="do-val" class="text-3xl font-bold">--</span>
-        <span class="text-xs text-gray-400">mg/L</span>
-      </div>
+
+    <div class="card" id="card-do" style="border-left:5px solid #38bdf8;" onclick="showParameter('dissolvedOxygen')">
+      <div class="card-title">Dissolved Oxygen <span>ℹ️</span></div>
+      <div class="card-value"><span id="val-do">--</span><span class="unit">mg/L</span></div>
     </div>
-    <div class="bg-gray-900/60 border-l-4 border-l-red-500 border border-gray-800 rounded-xl p-4">
-      <p class="text-xs text-gray-400 font-semibold uppercase">Water Temperature</p>
-      <div class="flex items-baseline gap-2 mt-2">
-        <span id="temp-val" class="text-3xl font-bold">--</span>
-        <span class="text-xs text-gray-400">°C</span>
-      </div>
+
+    <div class="card" style="border-left:5px solid #ef4444;" onclick="showParameter('temperature')">
+      <div class="card-title">Water Temperature <span>ℹ️</span></div>
+      <div class="card-value"><span id="val-temp">--</span><span class="unit">°C</span></div>
     </div>
   </div>
 
-  <!-- Chart Grid -->
-  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-    <div class="bg-gray-900/60 border border-gray-800 rounded-xl p-4">
-      <h3 class="text-xs font-semibold uppercase tracking-wider mb-3 text-gray-300">Turbidity Level Trend</h3>
-      <div class="h-48"><canvas id="chart-turbidity"></canvas></div>
+  <!-- Parameter Information Panel -->
+  <div id="paramDetailPanel" class="parameter-panel hidden">
+    <h2 id="det-title">Parameter</h2>
+    <div class="definition-box">
+      <strong>Definition:</strong> <span id="det-def">--</span>
     </div>
-    <div class="bg-gray-900/60 border border-gray-800 rounded-xl p-4">
-      <h3 class="text-xs font-semibold uppercase tracking-wider mb-3 text-gray-300">pH Trend</h3>
-      <div class="h-48"><canvas id="chart-ph"></canvas></div>
+    <div class="parameter-impact">
+      <strong>Relationship to Hypoxia:</strong> <span id="det-impact">--</span>
     </div>
-    <div class="bg-gray-900/60 border border-gray-800 rounded-xl p-4">
-      <h3 class="text-xs font-semibold uppercase tracking-wider mb-3 text-gray-300">Dissolved Oxygen Trend</h3>
-      <div class="h-48"><canvas id="chart-do"></canvas></div>
+    <div class="parameter-impact">
+      <strong>Interpretation:</strong> <span id="det-interpretation">--</span>
     </div>
-    <div class="bg-gray-900/60 border border-gray-800 rounded-xl p-4">
-      <h3 class="text-xs font-semibold uppercase tracking-wider mb-3 text-gray-300">Temperature Trend</h3>
-      <div class="h-48"><canvas id="chart-temp"></canvas></div>
+    <div class="parameter-stats">
+      <div class="stat-box"><strong>Minimum:</strong> <span id="det-min">--</span></div>
+      <div class="stat-box"><strong>Maximum:</strong> <span id="det-max">--</span></div>
+    </div>
+    <button class="close-button" onclick="hideDetail()">Close</button>
+  </div>
+
+  <!-- Individual Parameter Charts -->
+  <div class="dashboard-grid" style="margin-bottom:24px;">
+    <div class="panel minor-chart">
+      <div class="panel-header">Turbidity Trend</div>
+      <div class="chart-box"><canvas id="chartTurbidity"></canvas></div>
+    </div>
+    <div class="panel minor-chart">
+      <div class="panel-header">pH Trend</div>
+      <div class="chart-box"><canvas id="chartPH"></canvas></div>
+    </div>
+    <div class="panel minor-chart">
+      <div class="panel-header">Dissolved Oxygen Trend</div>
+      <div class="chart-box"><canvas id="chartDO"></canvas></div>
+    </div>
+    <div class="panel minor-chart">
+      <div class="panel-header">Temperature Trend</div>
+      <div class="chart-box"><canvas id="chartTemp"></canvas></div>
     </div>
   </div>
 
-  <!-- Dashboard Script -->
+  <!-- Combined Chart + Correlation Matrix -->
+  <div class="dashboard-grid">
+    <div class="panel">
+      <div class="panel-header">Combined Parameter Trend</div>
+      <div class="chart-box"><canvas id="lineChart"></canvas></div>
+    </div>
+    <div class="panel">
+      <div class="panel-header">Correlation Matrix</div>
+      <div id="heatmap" class="chart-box"></div>
+    </div>
+  </div>
+
   <script>
-    // Helper to map numeric NTU into categorical string
+    /* Turbidity Categorization */
     function getTurbidityCategory(ntu) {
       if (ntu === undefined || ntu === null || isNaN(ntu)) return "--";
-      const value = Number(ntu);
-      if (value < 10) return "Low";
-      if (value <= 50) return "Medium";
+      const val = Number(ntu);
+      if (val < 10) return "Low";
+      if (val <= 50) return "Medium";
       return "High";
     }
 
-    // Chart initialization helper
-    const createChartConfig = (label, color) => ({
-      type: 'line',
-      data: { labels: [], datasets: [{ label, data: [], borderColor: color, backgroundColor: color + '15', fill: true, tension: 0.3 }] },
+    /* History Data Store */
+    const historyData = {
+      timestamps: [],
+      rawDocs: [],
+      turbidity: [],
+      ph: [],
+      dissolvedOxygen: [],
+      temperature: []
+    };
+
+    /* Parameter Meta Information */
+    const paramInfo = {
+      dissolvedOxygen: {
+        title: "Dissolved Oxygen (DO)",
+        def: "The amount of oxygen dissolved in water that is available for aquatic organisms.",
+        impact: "Dissolved oxygen is one of the most important indicators of hypoxia. Low DO can cause stress, suffocation, and fish kills.",
+        interpretation: "Values below 3 mg/L indicate stressful conditions; values below 2 mg/L represent severe hypoxia risk.",
+        unit: "mg/L"
+      },
+      temperature: {
+        title: "Water Temperature",
+        def: "A measurement of the thermal condition of the water.",
+        impact: "Warmer water holds less oxygen. Higher temperatures increase metabolic oxygen demand while accelerating oxygen depletion.",
+        interpretation: "High water temperatures combined with low DO levels heighten severe hypoxia risk.",
+        unit: "°C"
+      },
+      ph: {
+        title: "pH Level",
+        def: "A measurement describing how acidic or alkaline water is (scale 0–14).",
+        impact: "Fluctuations can stress aquatic life and signal changes in biological activity like algae blooms.",
+        interpretation: "Ideal pH ranges between 6.5 and 8.5 for stable aquatic ecosystems.",
+        unit: "pH"
+      },
+      turbidity: {
+        title: "Turbidity",
+        def: "A measurement of water clarity and suspended particulate matter.",
+        impact: "High turbidity blocks light penetration, limiting plant photosynthesis and altering oxygen dynamics.",
+        interpretation: "Categorized as Low (<10 NTU), Medium (10-50 NTU), or High (>50 NTU).",
+        unit: "Category"
+      }
+    };
+
+    function enterDashboard() {
+      document.getElementById("landingPage").style.display = "none";
+    }
+
+    function hideDetail() {
+      document.getElementById("paramDetailPanel").classList.add("hidden");
+    }
+
+    function hideAlert() {
+      document.getElementById("alertBanner").classList.add("hidden");
+    }
+
+    function showParameter(key) {
+      const info = paramInfo[key];
+      const values = historyData[key];
+
+      document.getElementById("det-title").textContent = info.title;
+      document.getElementById("det-def").textContent = info.def;
+      document.getElementById("det-impact").textContent = info.impact;
+      document.getElementById("det-interpretation").textContent = info.interpretation;
+
+      if (values.length > 0 && key !== 'turbidity') {
+        document.getElementById("det-min").textContent = Math.min(...values).toFixed(2) + " " + info.unit;
+        document.getElementById("det-max").textContent = Math.max(...values).toFixed(2) + " " + info.unit;
+      } else {
+        document.getElementById("det-min").textContent = "--";
+        document.getElementById("det-max").textContent = "--";
+      }
+
+      document.getElementById("paramDetailPanel").classList.remove("hidden");
+    }
+
+    /* Chart Creation Helpers */
+    function createMiniChart(canvasId, color, dataArray) {
+      return new Chart(document.getElementById(canvasId).getContext("2d"), {
+        type: "line",
+        data: {
+          labels: historyData.timestamps,
+          datasets: [{
+            data: dataArray,
+            borderColor: color,
+            backgroundColor: color + '18',
+            tension: 0.35,
+            fill: true,
+            pointRadius: 2
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { display: false },
+            y: { ticks: { color: "#64748b" }, grid: { color: "#e2e8f0" } }
+          }
+        }
+      });
+    }
+
+    const chartTurbidity = createMiniChart("chartTurbidity", "#f97316", historyData.turbidity);
+    const chartPH = createMiniChart("chartPH", "#22c55e", historyData.ph);
+    const chartDO = createMiniChart("chartDO", "#38bdf8", historyData.dissolvedOxygen);
+    const chartTemp = createMiniChart("chartTemp", "#ef4444", historyData.temperature);
+
+    const lineChart = new Chart(document.getElementById("lineChart").getContext("2d"), {
+      type: "line",
+      data: {
+        labels: historyData.timestamps,
+        datasets: [
+          { label: "Turbidity (NTU)", borderColor: "#f97316", data: historyData.turbidity, tension: 0.35, pointRadius: 2 },
+          { label: "pH", borderColor: "#22c55e", data: historyData.ph, tension: 0.35, pointRadius: 2 },
+          { label: "DO (mg/L)", borderColor: "#38bdf8", data: historyData.dissolvedOxygen, tension: 0.35, pointRadius: 2 },
+          { label: "Temp (°C)", borderColor: "#ef4444", data: historyData.temperature, tension: 0.35, pointRadius: 2 }
+        ]
+      },
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
         scales: {
-          x: { ticks: { color: '#6b7280', font: { size: 10 } }, grid: { color: '#1f2937' } },
-          y: { ticks: { color: '#6b7280', font: { size: 10 } }, grid: { color: '#1f2937' } }
+          x: { ticks: { color: "#64748b" }, grid: { color: "#e2e8f0" } },
+          y: { ticks: { color: "#64748b" }, grid: { color: "#e2e8f0" } }
         }
       }
     });
 
-    const charts = {
-      turbidity: new Chart(document.getElementById('chart-turbidity'), createChartConfig('Turbidity (NTU)', '#3b82f6')),
-      ph: new Chart(document.getElementById('chart-ph'), createChartConfig('pH', '#10b981')),
-      do: new Chart(document.getElementById('chart-do'), createChartConfig('DO', '#06b6d4')),
-      temp: new Chart(document.getElementById('chart-temp'), createChartConfig('Temp', '#ef4444'))
-    };
+    /* Pearson Correlation Calculation */
+    function calcCorr(x, y) {
+      const n = Math.min(x.length, y.length);
+      if (n < 2) return 0;
+      let sX = 0, sY = 0, sXY = 0, sX2 = 0, sY2 = 0;
+      for (let i = 0; i < n; i++) {
+        sX += x[i]; sY += y[i]; sXY += x[i]*y[i];
+        sX2 += x[i]*x[i]; sY2 += y[i]*y[i];
+      }
+      const denom = Math.sqrt((n * sX2 - sX * sX) * (n * sY2 - sY * sY));
+      return denom === 0 ? 0 : Number(((n * sXY - sX * sY) / denom).toFixed(2));
+    }
 
-    function updateInterpretation(doVal) {
-      const el = document.getElementById("interpretation-text");
+    function updateHeatmap() {
+      const vars = ["Turbidity", "pH", "DO", "Temp"];
+      const t = historyData.turbidity, p = historyData.ph, d = historyData.dissolvedOxygen, temp = historyData.temperature;
+      const z = [
+        [1, calcCorr(t, p), calcCorr(t, d), calcCorr(t, temp)],
+        [calcCorr(p, t), 1, calcCorr(p, d), calcCorr(p, temp)],
+        [calcCorr(d, t), calcCorr(d, p), 1, calcCorr(d, temp)],
+        [calcCorr(temp, t), calcCorr(temp, p), calcCorr(temp, d), 1]
+      ];
+
+      Plotly.newPlot("heatmap", [{
+        z: z, x: vars, y: vars, type: 'heatmap', colorscale: 'Blues', showscale: true
+      }], {
+        margin: { t: 10, r: 10, b: 30, l: 50 },
+        autosize: true
+      }, { responsive: true });
+    }
+
+    function updateAIInsight(doVal) {
+      const insight = document.getElementById("aiInsight");
       if (doVal === undefined || doVal === null) return;
       if (doVal < 2.0) {
-        el.innerText = "CRITICAL HYPOXIA DETECTED! Dissolved oxygen levels are severely low (< 2.0 mg/L). Marine life risk is high.";
-        el.className = "text-sm font-semibold text-red-400";
+        insight.innerHTML = "🔴 <strong>CRITICAL HYPOXIA DETECTED!</strong> Dissolved oxygen levels are severely low (< 2.0 mg/L). Marine life risk is high.";
+        document.getElementById("alertBanner").classList.remove("hidden");
+        document.getElementById("card-do").classList.add("warning");
       } else if (doVal < 4.0) {
-        el.innerText = "MODERATE HYPOXIA WARNING: Dissolved oxygen is below optimal aquatic levels (2.0 - 4.0 mg/L).";
-        el.className = "text-sm font-semibold text-amber-400";
+        insight.innerHTML = "🟡 <strong>MODERATE HYPOXIA WARNING:</strong> Dissolved oxygen is below optimal aquatic levels (2.0 - 4.0 mg/L).";
+        document.getElementById("alertBanner").classList.add("hidden");
+        document.getElementById("card-do").classList.remove("warning");
       } else {
-        el.innerText = "ENVIRONMENTAL CONDITIONS NORMAL: Dissolved oxygen, pH, and water temperature are within safe thresholds.";
-        el.className = "text-sm font-semibold text-emerald-400";
+        insight.innerHTML = "🟢 <strong>ENVIRONMENTAL CONDITIONS NORMAL:</strong> Dissolved oxygen, pH, and water temperature are within safe thresholds.";
+        document.getElementById("alertBanner").classList.add("hidden");
+        document.getElementById("card-do").classList.remove("warning");
       }
     }
 
-    async function initDashboard() {
-      const statusBadge = document.getElementById("status-badge");
+    /* CSV Export */
+    function exportDataToCSV() {
+      if (!historyData.rawDocs.length) return alert("No history data available to export.");
+      let csv = "Timestamp,Turbidity_NTU,pH,DissolvedOxygen_mgL,Temperature_C\n";
+      historyData.rawDocs.forEach(d => {
+        const time = d.measuredAt?.toDate ? d.measuredAt.toDate().toISOString() : d.measuredAt;
+        csv += `"${time}",${d.turbidity},${d.ph},${d.dissolvedOxygen},${d.temperature}\n`;
+      });
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `BREATHE_Data_${new Date().toISOString().slice(0,10)}.csv`;
+      a.click();
+    }
+
+    /* Firebase Cloud Initialization & Synchronization */
+    async function initFirebaseSync() {
+      const status = document.getElementById("syncStatus");
       try {
         const response = await fetch("https://breathe-nu-ten.vercel.app/api/config/firebase");
-        if (!response.ok) throw new Error("API Config Response Error: " + response.status);
+        if (!response.ok) throw new Error("Config response error: " + response.status);
         
         const firebaseConfig = await response.json();
         if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
@@ -156,70 +788,85 @@
           .limit(20)
           .onSnapshot((snapshot) => {
             if (snapshot.empty) {
-              statusBadge.innerText = "No Data Received";
-              statusBadge.className = "bg-amber-600/20 text-amber-400 border border-amber-500/30 text-xs px-3 py-1.5 rounded-full font-medium";
+              status.textContent = "No Data";
               return;
             }
 
-            statusBadge.innerText = "Connected";
-            statusBadge.className = "bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 text-xs px-3 py-1.5 rounded-full font-medium";
+            status.textContent = "Connected";
+            status.style.color = "#166534";
+            status.style.background = "#dcfce7";
 
-            const rawDocs = snapshot.docs.map(doc => doc.data());
-            const dataDocs = [...rawDocs].reverse();
+            const docs = snapshot.docs.map(doc => doc.data());
+            const chronologicalDocs = [...docs].reverse();
 
-            document.getElementById("history-count").innerText = `${rawDocs.length} points`;
-
-            // Display latest data point with categorical turbidity
-            const latest = rawDocs[0];
-            document.getElementById("turbidity-val").innerText = getTurbidityCategory(latest.turbidity);
-            document.getElementById("ph-val").innerText = latest.ph ?? "--";
-            document.getElementById("do-val").innerText = latest.dissolvedOxygen ?? "--";
-            document.getElementById("temp-val").innerText = latest.temperature ?? "--";
-
-            if (latest.measuredAt) {
-              const dateObj = latest.measuredAt.toDate ? latest.measuredAt.toDate() : new Date(latest.measuredAt);
-              document.getElementById("last-update-time").innerText = dateObj.toLocaleTimeString();
-            }
-
-            updateInterpretation(latest.dissolvedOxygen);
-
-            // Chart rendering
-            const timeLabels = dataDocs.map(d => {
+            historyData.rawDocs = docs;
+            historyData.timestamps = chronologicalDocs.map(d => {
               if (!d.measuredAt) return "";
               const date = d.measuredAt.toDate ? d.measuredAt.toDate() : new Date(d.measuredAt);
               return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             });
 
-            charts.turbidity.data.labels = timeLabels;
-            charts.turbidity.data.datasets[0].data = dataDocs.map(d => d.turbidity);
-            charts.turbidity.update();
+            historyData.turbidity = chronologicalDocs.map(d => d.turbidity ?? 0);
+            historyData.ph = chronologicalDocs.map(d => d.ph ?? 0);
+            historyData.dissolvedOxygen = chronologicalDocs.map(d => d.dissolvedOxygen ?? 0);
+            historyData.temperature = chronologicalDocs.map(d => d.temperature ?? 0);
 
-            charts.ph.data.labels = timeLabels;
-            charts.ph.data.datasets[0].data = dataDocs.map(d => d.ph);
-            charts.ph.update();
+            const latest = docs[0];
+            document.getElementById("val-turbidity").innerText = getTurbidityCategory(latest.turbidity);
+            document.getElementById("val-ph").innerText = latest.ph ?? "--";
+            document.getElementById("val-do").innerText = latest.dissolvedOxygen ?? "--";
+            document.getElementById("val-temp").innerText = latest.temperature ?? "--";
 
-            charts.do.data.labels = timeLabels;
-            charts.do.data.datasets[0].data = dataDocs.map(d => d.dissolvedOxygen);
-            charts.do.update();
+            document.getElementById("pointCountLabel").innerText = `History: ${docs.length} points`;
+            if (latest.measuredAt) {
+              const timeObj = latest.measuredAt.toDate ? latest.measuredAt.toDate() : new Date(latest.measuredAt);
+              document.getElementById("lastUpdatedLabel").innerText = `Last update: ${timeObj.toLocaleTimeString()}`;
+            }
 
-            charts.temp.data.labels = timeLabels;
-            charts.temp.data.datasets[0].data = dataDocs.map(d => d.temperature);
-            charts.temp.update();
+            updateAIInsight(latest.dissolvedOxygen);
+
+            /* Refresh Charts */
+            chartTurbidity.data.labels = historyData.timestamps;
+            chartTurbidity.data.datasets[0].data = historyData.turbidity;
+            chartTurbidity.update();
+
+            chartPH.data.labels = historyData.timestamps;
+            chartPH.data.datasets[0].data = historyData.ph;
+            chartPH.update();
+
+            chartDO.data.labels = historyData.timestamps;
+            chartDO.data.datasets[0].data = historyData.dissolvedOxygen;
+            chartDO.update();
+
+            chartTemp.data.labels = historyData.timestamps;
+            chartTemp.data.datasets[0].data = historyData.temperature;
+            chartTemp.update();
+
+            lineChart.data.labels = historyData.timestamps;
+            lineChart.data.datasets[0].data = historyData.turbidity;
+            lineChart.data.datasets[1].data = historyData.ph;
+            lineChart.data.datasets[2].data = historyData.dissolvedOxygen;
+            lineChart.data.datasets[3].data = historyData.temperature;
+            lineChart.update();
+
+            updateHeatmap();
 
           }, (err) => {
-            console.error("Firestore error:", err);
-            statusBadge.innerText = "Connection Error";
-            statusBadge.className = "bg-red-600/20 text-red-400 border border-red-500/30 text-xs px-3 py-1.5 rounded-full font-medium";
+            console.error("Firestore sync error:", err);
+            status.textContent = "Sync Error";
+            status.style.color = "#b91c1c";
+            status.style.background = "#fee2e2";
           });
 
       } catch (err) {
-        console.error("Dashboard Init Error:", err);
-        statusBadge.innerText = "Connection Lost";
-        statusBadge.className = "bg-red-600/20 text-red-400 border border-red-500/30 text-xs px-3 py-1.5 rounded-full font-medium";
+        console.error("Init Error:", err);
+        status.textContent = "Connection Failure";
+        status.style.color = "#b91c1c";
+        status.style.background = "#fee2e2";
       }
     }
 
-    initDashboard();
+    initFirebaseSync();
   </script>
 </body>
 </html>
