@@ -78,7 +78,7 @@ app.get('/api/test/gemini', async (req, res) => {
       });
     }
 
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-3.6-flash' });
     const result = await model.generateContent('Say hello');
 
     res.json({
